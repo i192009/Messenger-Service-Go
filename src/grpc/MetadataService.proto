@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package structure;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.metadata.lib";
+option java_outer_classname = "MetadataProto";
+
+service MetadataService {
+
+  rpc Save(C2S_SaveReq) returns (C2S_SaveRpn){}
+  rpc GetByMetaId(C2S_GetByMetaIdReq) returns (C2S_GetByMetaIdRpn){}
+  rpc GetAndConvert(C2S_GetAndConvertReq) returns (C2S_GetAndConvertRpn){}
+  rpc List(C2S_ListReq) returns (C2S_ListRpn){}
+  rpc ListHis(C2S_ListHisReq) returns (C2S_ListHisRpn){}
+
+  rpc UpdateByMetaIdAndVersion(C2S_UpdateByMetaIdAndVersionReq_t) returns (C2S_UpdateByMetaIdAndVersionRpn_t){}
+}
+
+// 调用者信息
+message InvokeUser {
+  string openId = 10; // 调用者的openid
+  string companyId = 20; // 调用者的企业id, 与企业无关的应用可以不传入
+  string appId = 30; // 调用的appId
+  string uid = 40; // 调用者的uid
+}
+
+// 元数据对象
+message MetadataEntity{
+  string id = 10;
+  int32 version = 20; // 版本
+  string metaId = 30; // 元数据id, 多个版本的元数据信息该id值一致
+  string createdBy = 40; // 创建者的openid
+  google.protobuf.Timestamp createTime = 50; // 创建时间
+  string updatedBy = 60; // 更新者的openid
+  google.protobuf.Timestamp updateTime = 70; // 更新时间
+  string data = 80; // 元数据内容, json格式字符串
+}
+
+enum MetadataSaveTypeEnum{
+  UPDATE_ORIGINAL_DATA = 0; // 更新原始数据
+  GENERATE_NEW_VERSION = 1; // 创建新版本
+}
+
+
+message C2S_SaveReq{
+  string metadata = 10; // 元数据内容, json格式字符串
+  string metadataType = 20; // 元数据类型
+  string metaId = 30; // 元数据id
+  MetadataSaveTypeEnum metadataSaveType = 40; // 元数据保存类型
+  string operate = 50;
+  InvokeUser invokeUserInfo = 60;
+}
+
+message C2S_SaveRpn{
+  MetadataEntity metadataEntity = 10;
+}
+
+message C2S_GetByMetaIdReq {
+  string metaId = 10;
+  string metadataType = 20;
+}
+
+message C2S_GetByMetaIdRpn{
+  MetadataEntity metadataEntity = 10;
+}
+
+message C2S_GetAndConvertReq{
+  string metaId = 10; // 元数据id
+  string metadataType = 20; // 元数据类型
+  string convertOperate = 30; // 转换的处理方式
+  string searchOperate = 40; // 查询的处理方式
+  string searchCondition = 50; //json 格式字符串
+  InvokeUser invokeUserInfo = 60;
+}
+
+message C2S_GetAndConvertRpn{
+  MetadataEntity metadataEntity = 10;
+}
+
+message C2S_ListReq{
+  string metadataType = 10; // 元数据类型
+  string operate = 20; // 转换的处理方式
+  string searchCondition = 30; //json 格式字符串
+  InvokeUser invokeUserInfo = 40;
+}
+
+message C2S_ListRpn{
+  repeated MetadataEntity metadataList = 10;
+}
+
+message C2S_ListHisReq {
+  string metadataType = 10;
+  string operate = 20;
+  string searchCondition = 30; //json 格式字符串
+  InvokeUser invokeUserInfo = 40;
+}
+
+message C2S_ListHisRpn {
+  repeated MetadataEntity metadataList = 10;
+}
+
+message C2S_UpdateByMetaIdAndVersionReq_t {
+
+  string metaId = 10; // 元数据id
+  optional int32 version = 20; // 版本
+  string metadata = 30; // 元数据内容, json格式字符串
+  string metadataType = 40; // 元数据类型
+  int32 updateType = 50; // 更新类型: 0b1: 更新元数据, 0b10: 更新元数据历史, 0b11: 更新元数据和元数据历史
+  InvokeUser invokeUserInfo = 60;
+}
+
+message C2S_UpdateByMetaIdAndVersionRpn_t {
+
+  int32 updateCount = 10; // 更新的记录数
+}

@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package structure;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.structure.lib";
+option java_outer_classname = "StructureAuthorizationProto";
+
+// 权限服务
+service AuthorizationService {
+    // 设置节点角色用户集
+    rpc SetAuthorization(AuthorizationModifyRequest) returns (AuthorizationModifyReply) {}
+    // 增加用户对节点的角色
+    rpc AddAuthorization(AuthorizationModifyRequest) returns (AuthorizationModifyReply) {}
+
+    //修改用户权限角色
+    rpc UpdateAuthorization(AuthorizationUpdateRequest) returns (AuthorizationModifyReply) {}
+
+    //查询节点对应的角色
+    rpc GetAuthorization(AuthorizationGetRequest) returns (AuthorizationGetReply) {}
+
+    // 删除节点拥有的用户角色
+    rpc DeleteAuthorizationRole(DeleteAuthorizationRoleRequest) returns (AuthorizationModifyReply) {}
+    // 清除节点在某权限点上的授权
+  //  rpc ClearAuthorization(AuthorizationModifyRequest) returns (AuthorizationModifyReply) {}
+    // 检查节点在某权限点上的授权
+    rpc CheckAuthorization(AuthorizationCheckRequest) returns (AuthorizationCheckReply) {}
+
+    //删除用户节点权限
+    rpc RemoveAuthorizationUsers(C2S_RemoveAuthorizationUsersRequest_t) returns (C2S_RemoveAuthorizationUsersRpn_t) {}
+
+}
+
+message Authorization {
+    string nodeId = 1;              // 节点
+    repeated string openIds = 2;        // 用户集合
+    string role = 3; // 角色
+}
+
+// 将[节点]的[权限点]集合授权给[用户]集合
+message AuthorizationModifyRequest {
+    // 接口调用鉴权，在节点上拥有指定权限的人才能调用本接口
+    string appId = 1;
+    string openId = 2;
+    string privilege = 3;
+
+    Authorization authorizeParam = 4;
+}
+
+message AuthorizationUpdateRequest {
+    // 接口调用鉴权，在节点上拥有指定权限的人才能调用本接口
+    string appId = 1;
+    string openId = 2;
+    string privilege = 3;
+    string nodeId = 4;
+
+    repeated UserRole userRoles = 5;
+    message UserRole {
+        // 节点
+        string openId = 1;        // 用户集合
+        string role = 2; // 角色
+        string oldRole = 3; // 旧角色
+    }
+
+}
+
+message AuthorizationModifyReply {
+    // 为空
+}
+
+// 检查[用户]对[节点]是否拥有[权限]
+message AuthorizationCheckRequest {
+    // 接口调用鉴权，调用主体为应用本身，不需对用户鉴权
+    string appId = 1;
+
+    message AuthorizationQueryParam {
+        string uid = 1;         // 查询用户
+        string nodeId = 2;      // 查询节点
+        string privilege = 3;   // 查询权限
+    }
+    AuthorizationQueryParam queryParam = 2;
+
+}
+
+message AuthorizationCheckReply {
+    bool isAuthorized = 1;
+}
+
+message AuthorizationGetRequest {
+    // 接口调用鉴权，在节点上拥有指定权限的人才能调用本接口
+    string appId = 1;
+    string openId = 2;
+    string privilege = 3;
+
+    string nodeId = 5;
+}
+
+message AuthorizationGetReply {
+    repeated Authorization authorizations = 1;
+    message Authorization {
+        string uid = 1;
+        repeated string roleName = 2;
+    }
+}
+
+message DeleteAuthorizationRoleRequest {
+    // 接口调用鉴权，在节点上拥有指定权限的人才能调用本接口
+    string appId = 1;
+    string openId = 2;
+    string privilege = 3;
+    string nodeId = 4;
+    repeated UserRole userRoles = 5;
+    message UserRole {
+        string openId = 1;
+        string roleName = 3;
+    }
+}
+
+message C2S_RemoveAuthorizationUsersRequest_t {
+    string appId = 10;
+    string openId = 20;
+    string privilege = 30;
+    repeated string nodeIds= 40;
+}
+
+message C2S_RemoveAuthorizationUsersRpn_t {
+
+}

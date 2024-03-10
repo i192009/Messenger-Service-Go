@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package zeta3d;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.zeta3d.lib";
+option java_outer_classname = "Zeta3DProto";
+
+service Zeta3DService {
+
+  rpc SaveOrUpdatePublishInfo(C2S_SaveOrUpdatePublishInfoReq_t) returns (google.protobuf.Empty){}
+}
+
+// 调用者信息
+message InvokeUser {
+  string openId = 10; // 调用者的openid
+  string companyId = 20; // 调用者的企业id, 与企业无关的应用可以不传入
+  string appId = 30; // 调用的appId
+  string uid = 40; // 调用者的uid
+  string accountName = 50; // 调用者的账号名
+  string instanceId = 60; // 应用实例id
+  string instanceName = 70;// 应用实例名称
+  string unionId = 80; // 用户的unionId
+}
+
+message C2S_SaveOrUpdatePublishInfoReq_t {
+  Z3dPublish z3dPublish = 10;
+  InvokeUser invokeUserInfo = 20;
+}
+
+message Z3dPublish {
+  string projectId = 1; // 项目id
+  string publishType = 10; // 发布类型
+  int32 status = 19; // 状态:0:处理中/1:成功/2:失败
+  string obsBaseKey = 28; // obs上的路径
+  string errorMsg = 37; // 错误消息
+  string hashVal = 46; // 项目id+发布类型的md5值
+  int32 checkLoginType = 55; // 检查登录类型, 0:不检查登录; 1:检查登录
+  string createdBy = 64; // 创建人
+  int64 createTime = 73; // 创建时间
+  string updatedBy = 82; // 更新人
+  int64 updateTime = 91; // 更新时间
+}

@@ -1,0 +1,178 @@
+default:
+  image: swr.cn-east-3.myhuaweicloud.com/zixel/golang:1.19-alpine
+
+variables:
+  # 公用环境变量
+  GIT_SUBMODULE_STRATEGY: recursive # git submodule编译
+
+  # 应用配置
+  APP_NAME: messenger  # 应用名称
+  NAMESPACE: $CI_COMMIT_BRANCH
+  HTTP_PORT: 8573  # 应用端口
+  GRPC_PORT: 9400  # 应用端口
+  MAINTAINER: aseed.khokhar@zixel.cn
+  APP_OUTPUT_IMAGE_NAME: swr.cn-east-3.myhuaweicloud.com/zixel/$APP_NAME # 应用维护者
+
+  # k8s配置
+  REPLICAS: 2  # 副本数量
+  CPU_REQUEST: 250m  # pod初始CPU资源请求限制
+  MEM_REQUEST: 64Mi  # pod初始内存资源请求限制
+  CPU_LIMIT: 500m  # pod最大CPU资源请求限制
+  MEM_LIMIT: 512Mi  # pod最大内存资源请求限制
+
+before_script:
+  - echo "machine gitlab.zixel.cn login gitlab-ci-token password ${CI_JOB_TOKEN}" > ~/.netrc
+  - cat ~/.netrc
+  #- sed -i -e '/^replace[ \t]*(/,/^)/d' -e '/replace/d' src/go.mod
+  - cat src/go.mod
+
+stages:
+  - build
+  - test
+  - package
+  - deploy
+  - clean
+
+build-job:
+  stage: build
+  cache:
+    # 不同的job通过key来决定cache是否是同一个
+    key: $CI_COMMIT_REF_NAME
+    # 缓存的目录
+    paths:
+      - bin
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+    GIT_SUBMODULE_UPDATE_FLAGS: --jobs 4
+  tags:
+    - linux
+    - golang
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "Current working directory is $(pwd)"
+    - echo "$CI_PROJECT_NAMESPACE"
+    - echo "$CI_COMMIT_BRANCH"
+    - go env
+    - cd src
+    - ls -l --color /go/bin
+    - ls -l --color ./services
+    - ls -l --color ./grpc/
+    - cd services
+    - /bin/sh ./gen-proto.sh
+    - cd ..
+    - echo $NETRC; cat $NETRC
+    - go mod tidy -v
+    # 开始编译
+    - go build -o ../bin/$APP_NAME
+    # 编译完成
+    - cd ..
+    # 查看编译的结果
+    - ls -l --color bin/
+    # 构造通知
+    - |
+      if [ "$(git log -1 | grep 'See merge request')" != "" ]; then
+        echo https://gitlab.zixel.cn/$(git log -1 | grep 'See merge request' | awk '{gsub("!","/-/merge_requests/", $4); print $4}') > bin/merge_request_url
+        cat bin/merge_request_url
+      fi
+
+test-job:
+  stage: test
+  cache:
+    # 不同的job通过key来决定cache是否是同一个
+    key: $CI_COMMIT_REF_NAME
+    # 缓存的目录
+    paths:
+      - bin
+  tags:
+    - linux
+    - golang
+  script:
+    - echo "Run unit test here"
+    - echo "..."
+
+package-job:
+  image: swr.cn-east-3.myhuaweicloud.com/zixel/docker:20.10.14-alpine3.15
+  stage: package
+  cache:
+    # 不同的job通过key来决定cache是否是同一个
+    key: $CI_COMMIT_REF_NAME
+    # 缓存的目录
+    paths:
+      - bin
+  tags:
+    - linux
+    - docker
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_PROJECT_ROOT_NAMESPACE == "z-jumeaux-engine"
+  script:
+    - echo "Make docker image and push to $DockerRegistry"
+    - echo "Current directory is $(pwd)"
+    # 查看当前文件
+    - ls -l --color bin/
+    # 登录华为镜像仓库
+    - /root/registry-login.sh
+    # 进入镜像打包的目录
+    - cd bin
+    - echo "Current directory is $(pwd)"
+    # 创建Dockerfile
+    - |
+      tee Dockerfile << EOF
+      FROM swr.cn-east-3.myhuaweicloud.com/zixel/golang:1.19-alpine
+      RUN mkdir -p /service
+      COPY $APP_NAME /service/
+      WORKDIR /service
+      EOF
+    # 检查 Dockerfile
+    - cat Dockerfile
+    # 开始构建镜像，镜像名一定要是小写，否则会报错
+    - docker build -t $APP_OUTPUT_IMAGE_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA .
+    - docker image tag $APP_OUTPUT_IMAGE_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA $APP_OUTPUT_IMAGE_NAME:$CI_COMMIT_BRANCH-latest
+    # 推送镜像
+    - docker push $APP_OUTPUT_IMAGE_NAME:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
+    - docker push $APP_OUTPUT_IMAGE_NAME:$CI_COMMIT_BRANCH-latest
+
+
+deploy-job:
+  image:
+    name: swr.cn-east-3.myhuaweicloud.com/zixel/bitnami/kubectl:1.23-debian-10
+    entrypoint: [""]
+  stage: deploy
+  cache:
+    # 不同的job通过key来决定cache是否是同一个
+    key: $CI_COMMIT_REF_NAME
+    # 缓存的目录
+    paths:
+      - bin
+  tags:
+    - linux
+    - deploy
+
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_PROJECT_ROOT_NAMESPACE == "z-jumeaux-engine" && $CI_COMMIT_REF_NAME == "dev"
+    - if: $CI_PROJECT_ROOT_NAMESPACE == "z-jumeaux-engine" && $CI_COMMIT_REF_NAME == "qa"
+
+  script:
+    - echo "Deploy service on k8s"
+    - echo "CI_COMMIT_BRANCH=$CI_COMMIT_BRANCH"
+    - echo "CI_COMMIT_SHORT_SHA=$CI_COMMIT_SHORT_SHA"
+    - eval "echo \"$(cat .kubernetes/deploy-template.yaml)\""
+    - eval "echo \"$(cat .kubernetes/deploy-template.yaml)\"" | kubectl apply -f -
+
+clean-job:
+  stage: clean
+  cache:
+    # 不同的job通过key来决定cache是否是同一个
+    key: $CI_COMMIT_REF_NAME
+    # 缓存的目录
+    paths:
+      - bin
+  tags:
+    - linux
+    - golang
+  script:
+    - echo "Clean"
+    - rm -rf bin/*

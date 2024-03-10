@@ -1,0 +1,417 @@
+syntax = "proto3";
+
+package project;
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.project.lib";
+option java_outer_classname = "ProjectServiceProto";
+option go_package = "./;services";
+
+service ProjectService{
+
+  rpc CreateProject(C2S_CreateProjectReq_t) returns (C2S_CreateProjectRpn_t) {}
+
+  rpc JoinProject(C2S_JoinProjectReq_t) returns(google.protobuf.Empty) {}
+
+  rpc AddFile(C2S_AddFileReq_t) returns (C2S_AddFileRpn_t){}
+
+  rpc Push2Remote(C2S_Push2RemoteReq_t) returns (google.protobuf.Empty){}
+
+  rpc CreateBranch(C2S_CreateBranchReq_t) returns (google.protobuf.Empty){}
+
+  rpc DeleteBranch(C2S_DeleteBranchReq_t) returns (google.protobuf.Empty){}
+
+  rpc ListBranch(C2S_ListBranchReq_t) returns(C2S_ListBranchRpn_t){}
+
+  rpc CheckoutBranch(C2S_CheckoutBranchReq_t) returns(google.protobuf.Empty){}
+
+  rpc ListDiff(C2S_ListDiffReq_t) returns (C2S_ListDiffRpn_t){}
+
+  rpc ListFileInProject(C2S_ListFileInProjectReq_t) returns (C2S_ListFileInProjectRpn_t) {}
+
+  rpc Move(C2S_MoveReq_t) returns (google.protobuf.Empty) {}
+
+  rpc GetStatus(C2S_GetStatusReq_t) returns (C2S_GetStatusRpn_t) {}
+
+  rpc ListLog(C2S_ListLogReq_t) returns (C2S_ListLogRpn_t) {}
+
+  rpc Fetch(C2S_FetchReq_t) returns (google.protobuf.Empty) {}
+
+  rpc ListRefLog(C2S_ListRefLogReq_t) returns (C2S_ListRefLogRpn_t) {}
+
+  rpc Pull(C2S_PullReq_t) returns (C2S_PullRpn_t) {}
+
+  rpc DelFile(C2S_DelFileReq_t) returns (C2S_DelFileRpn_t) {}
+
+  rpc Reset(C2S_ResetReq_t) returns (google.protobuf.Empty) {}
+}
+
+// 调用者信息
+message InvokeUser {
+  string openId = 10; // 调用者的openid
+  string companyId = 20; // 调用者的企业id, 与企业无关的应用可以不传入
+  string appId = 30; // 调用的appId
+  string uid = 40; // 调用者的uid
+  string accountName = 50; // 调用者的账号名
+  string instanceId = 60; // 应用实例id
+  string instanceName = 70;// 应用实例名称
+  string unionId = 80; // 用户的unionId
+}
+
+message C2S_CreateProjectReq_t {
+  string name = 10; // 项目名称
+  string remark = 20; // 备注
+  InvokeUser invokeUserInfo = 30;
+}
+
+message C2S_CreateProjectRpn_t {
+  Project project = 10;
+}
+
+message Project {
+  string id = 10; // id
+  string name = 20; // 项目名称
+  string remark = 30; // 备注
+  int32 status = 40; // 状态
+
+}
+
+message C2S_JoinProjectReq_t {
+  string projectId = 10; // 要加入的项目id
+  string userOpenId = 20; // 要加入项目的用户oid
+  bool ignoreAlreadyIn = 30; // 是否忽略已加入的项目
+  InvokeUser invokeUserInfo = 40;
+
+}
+
+message C2S_AddFileReq_t {
+
+  repeated AddFileReq addFileReq = 10;
+  string projectId = 20; // 项目id
+  string parentRelativePath = 30; // 父级相对于项目根目录的路径, 新增加的文件/文件夹会在这个路径下, 该值前后不能带斜杠:/
+  string commitMsg = 40; // 提交信息
+  AddFileTypeEnum addFileType = 50;
+  InvokeUser invokeUserInfo = 60;
+}
+
+message C2S_AddFileRpn_t {
+  string commitId = 10; // commitId, 当自动提交且提交成功是会有该值
+}
+
+enum AddFileTypeEnum {
+  ONLY_WRITE_FILE = 0; // 只会将数据写入用户本地仓库, 不会产生提交日志
+  WRITE_AND_COMMIT = 10; // 写入文件并进行提交, 会合并之前的所有修改
+  WRITE_AND_COMMIT_BY_PATH = 20; //写入文件并进行提交, 仅提交当前写入文件
+  ONLY_COMMIT = 30; // 仅提交文件, 如果有指定文件, 仅提交指定文件, 没有指定文件,则合并所有修改提交
+}
+
+message AddFileReq {
+  string key = 10; //文件key
+  string hashValue = 20; // hash值
+  string name = 30; // 文件名
+  string relativePath = 40; //文件相对路径, 包含文件名, 前后无斜杠
+  FileTypeEnum fileType = 50;
+}
+
+message C2S_Push2RemoteReq_t {
+  string projectId = 10; // 项目id
+  InvokeUser invokeUserInfo = 20;
+}
+
+message C2S_CreateBranchReq_t {
+
+  string projectId = 10; // 项目id
+  string commitId = 20; // 提交id, 该值为空时, 采用当前所在分支的最新提交进行创建
+  string branchName = 30; // 分支名称
+  bool autoCheckout = 40; //是否自动切换到新分支
+  InvokeUser invokeUserInfo = 50;
+}
+
+message C2S_DeleteBranchReq_t {
+
+  string projectId = 10; // 项目id
+  string branchName = 20; // 分支名称
+  bool forceDelete = 30; // 是否强制删除
+  InvokeUser invokeUserInfo = 40;
+}
+
+message C2S_ListBranchReq_t {
+
+  enum ListBranchModeEnum {
+    LOCAL = 0;
+    REMOTE = 10;
+    ALL = 20;
+  }
+
+  string projectId = 10; // 项目id
+  ListBranchModeEnum listMode = 20;
+  InvokeUser invokeUserInfo = 30;
+}
+
+message C2S_ListBranchRpn_t {
+
+  repeated BranchInfo branchInfo = 10;
+}
+
+message BranchInfo {
+
+  string name = 10; // 分支名称
+  bool active = 20; // 是否活动
+  BranchTypeEnum branchType = 30;
+  BranchOrCommitEnum branchOrCommit = 40;
+  string commitId = 50;
+}
+enum BranchTypeEnum {
+  LOCAL = 0;
+  REMOTE = 10;
+}
+
+enum BranchOrCommitEnum {
+  BRANCH = 0;
+  COMMIT = 10;
+}
+
+message C2S_CheckoutBranchReq_t {
+  string projectId = 10; // 项目id
+  string branchName = 20; // 分支名称或者commitId
+  InvokeUser invokeUserInfo = 30;
+}
+
+message C2S_ListDiffReq_t {
+  string projectId = 10; // 项目id
+  string oldCommitId = 20; // 老的提交id, 可以使用 ^ 等符号
+  string newCommitId = 30; // 新的提交id
+  InvokeUser invokeUserInfo = 40;
+  bool showFileInfo = 50; // 是否显示文件信息
+}
+
+message C2S_ListDiffRpn_t {
+  repeated Diff diff = 10;
+}
+
+message Diff {
+
+  enum ChangeTypeEnum {
+    ADD = 0;
+    MODIFY = 10;
+    DELETE = 20;
+    RENAME = 30;
+    COPY = 40;
+  }
+
+  string oldPath = 10;
+  string newPath = 20;
+
+  ChangeTypeEnum changeType = 30;
+  string oldObjectId = 40;
+  string newObjectId = 50;
+  FileMeta oldFileMeta = 60;
+  FileMeta newFileMeta = 70;
+
+}
+
+message C2S_ListFileInProjectReq_t {
+  string projectId = 10; // 项目id
+  bool isRecursive = 20; // 是否递归
+  string parentFolderRelativePath = 30; // 父级目录的相对于项目根目录的路径, 该值前后不能带斜杠:/
+  InvokeUser invokeUserInfo = 40;
+}
+
+message C2S_ListFileInProjectRpn_t {
+
+  repeated FileMeta fileMeta = 10;
+}
+
+enum FileTypeEnum {
+  FILE = 0;
+  DIRECTORY = 10;
+}
+message FileMeta {
+
+  string key = 10; //文件key
+  string hashValue = 20; // hash值
+  string name = 30; // 文件名
+  string relativePath = 40; //文件相对路径, 包含文件名, 前后无斜杠
+  FileTypeEnum fileType = 50;
+}
+
+message C2S_MoveReq_t {
+  string projectId = 10; // 项目id
+  string oldFileRelativePath = 20; // 老文件相对于项目目录的路径, 该值前后不能带斜杠:/
+  string newFileRelativePath = 30; // 新文件相对于项目目录的路径, 该值前后不能带斜杠:/
+  string commitMsg = 40;
+  InvokeUser invokeUserInfo = 50;
+  bool autoCommit = 60;
+}
+
+message C2S_GetStatusReq_t {
+  string projectId = 10; // 项目id
+  InvokeUser invokeUserInfo = 20;
+}
+
+message C2S_GetStatusRpn_t {
+  string branchName = 10; // 分支名
+  string commitId = 20; // 提交id
+  bool clean = 30; // true if no differences exist between the working-tree, the index, and the current HEAD, false if differences do exist
+  repeated string untrackedFolders = 40;
+  map<string, string> conflictingStageState = 50; //key: 文件地址, value: BOTH_DELETED;ADDED_BY_US;DELETED_BY_THEM;ADDED_BY_THEM;DELETED_BY_US;BOTH_ADDED;BOTH_MODIFIED
+  repeated string ignoredNotInIndex = 55;
+  repeated string uncommittedChanges = 60;
+  repeated string added = 65;
+  repeated string missing = 70;
+  repeated string untracked = 75;
+  repeated string changed = 80;
+  repeated string removed = 85;
+  repeated string conflicting = 90;
+  repeated string modified = 93;
+}
+
+message C2S_ListLogReq_t {
+  string projectId = 10; // 项目id
+  int32 page = 20; // 第几页
+  int32 size = 30; // 每页多少条
+  string messageFilterPattern = 40;
+  string authorFilterPattern = 50;
+  repeated string branchFilterList = 60;
+  string timeFilter = 70;
+  repeated string pathFilterList = 80;
+  InvokeUser invokeUserInfo = 95;
+}
+
+message C2S_ListLogRpn_t {
+
+  repeated LogInfo logInfo = 10;
+}
+
+message LogInfo {
+  string commitShortMsg = 10;
+  string commitFullMsg = 20;
+  PersonIdent author = 30;
+  PersonIdent Committer = 40;
+  int32 commitTime = 50;
+  string commitId = 60;
+  string shortCommitId = 70;
+  repeated string parentCommitIdList = 80;
+  repeated string refs = 90;
+}
+
+message PersonIdent {
+  string name = 10;
+  string emailAddress = 20;
+  int64 when = 30;
+}
+
+message C2S_FetchReq_t {
+  string projectId = 10; // 项目id
+  InvokeUser invokeUserInfo = 20;
+}
+
+message C2S_ListRefLogReq_t {
+
+  string projectId = 10; // 项目id
+  string branchName = 20; // 分支名称, 不传入则获得所有分支
+  bool isAsc = 30; // 是否按时间正序排序
+  int32 page = 40;
+  int32 size = 50;
+  InvokeUser invokeUserInfo = 60;
+
+}
+
+message C2S_ListRefLogRpn_t {
+
+  map<string, RefLogList> map = 10;
+}
+
+message RefLogList {
+
+  message RefLog {
+    string oldObjectId = 10; // 项目id
+    string newObjectId = 20; // 分支名称, 不传入则获得所有分支
+    // PersonIdent who = 30; // 操作人
+    string comment = 40;
+  }
+  repeated RefLog refLog = 10;
+}
+
+message C2S_PullReq_t {
+
+  string projectId = 10; // 项目id
+  ResolveConflict ResolveConflict = 20;
+  InvokeUser invokeUserInfo = 30;
+}
+
+message C2S_PullRpn_t {
+
+  MergeStatus mergeStatus = 10;
+  bool mergeSuccess = 20;
+  repeated string mergeConflictFileList = 30;
+}
+
+message ResolveConflict {
+
+  bool commitAfterResolve = 10; // 冲突解决完毕后是否自动提交
+  string commitMsg = 20; // 自动提交时的提交信息
+  ResolveConflictBasedOnEnum resolveConflictBasedOn = 30; // 全局解决冲突的依据, MINE(以我的为准)/OTHERS(以别人的为准)
+  repeated ResolveFileConflict resolveFileConflictList = 40;
+}
+
+enum ResolveConflictBasedOnEnum {
+
+  NULL_ResolveConflictBasedOnEnum = 0;
+  MINE = 10; // 冲突文件以我的为准
+  OTHERS = 20; // 冲突文件以别人的为准
+}
+
+message ResolveFileConflict {
+
+  string filePath = 10; // 文件相对于项目的路径, 前后无斜杠
+  ResolveConflictBasedOnEnum resolveConflictBasedOn = 20; // 解决冲突的依据, MINE(以我的为准)/OTHERS(以别人的为准)
+}
+
+enum MergeStatus {
+  NULL_MergeStatus = 0;
+  FAST_FORWARD = 5;
+  FAST_FORWARD_SQUASHED = 10;
+  ALREADY_UP_TO_DATE = 15;
+  FAILED = 20;
+  MERGED = 25;
+  MERGED_SQUASHED = 30;
+  MERGED_SQUASHED_NOT_COMMITTED = 35;
+  CONFLICTING = 40;
+  ABORTED = 45;
+  MERGED_NOT_COMMITTED = 50;
+  NOT_SUPPORTED = 55;
+  CHECKOUT_CONFLICT = 60;
+}
+
+message C2S_DelFileReq_t {
+
+  string projectId = 10; // 项目id
+  repeated string relativePathList = 20; // 相对于项目的路径, 前后不带斜杠
+  bool autoCommit = 30; // 是否自动提交
+  string commitMsg = 40; // 提交的信息
+  InvokeUser invokeUserInfo = 50;
+}
+
+message C2S_DelFileRpn_t {
+  string commitId = 10; // commitId, 当自动提交且提交成功是会有该值
+}
+
+message C2S_ResetReq_t {
+
+  enum ResetType {
+    SOFT = 0;
+    MIXED = 10;
+    HARD = 20;
+    MERGE = 30;
+    KEEP = 40;
+  }
+
+  string projectId = 10; // 项目id
+  ResetType resetType = 20;
+  string ref = 30;
+  InvokeUser invokeUserInfo = 50;
+}

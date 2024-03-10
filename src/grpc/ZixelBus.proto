@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package="com.zixel.grpc";
+option go_package = "./;services";
+
+message MsgRequest {
+    string namespace = 1;
+    string catalogs = 2;
+    string service = 3;
+    string secretKey = 4;
+    string body = 5;
+}
+
+
+message MsgResponse {
+//  SUCCESS(1,"success"), FAIL(0,"fail");
+    int64 code = 1;
+    string msg = 2;
+}
+
+
+service ProducerMsgServer {
+    // 发送消息
+    rpc ProducerMsg (MsgRequest) returns (MsgResponse);
+}
+

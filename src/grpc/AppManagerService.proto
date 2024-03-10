@@ -1,0 +1,605 @@
+syntax = "proto3";
+package appmanger;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.appmanager.lib";
+option java_outer_classname = "AppManagerProto";
+option go_package = "./;services";
+
+service AppService{
+    //Create app
+    rpc CreateApp (C2S_CreateAppRequest) returns (C2S_CreateAppResponse) {}
+    //Update app
+    rpc UpdateApp (C2S_UpdateAppRequest) returns (C2S_UpdateAppResponse) {}
+    //Get app
+    rpc GetApp (C2S_GetAppRequest) returns (C2S_GetAppResponse) {}
+    //Sync app
+    rpc SyncApp (C2S_SyncAppRequest) returns (C2S_SyncAppResponse) {}
+}
+
+message C2S_CreateAppRequest{
+    string openId = 1; //Open id
+    string name = 2; //App name
+    string namespace = 3; //App namespace
+    string organizationId = 4; //Organization id
+    string channel = 5; //Channel
+    repeated google.protobuf.Struct configFields = 6; //App config fields
+    repeated google.protobuf.Struct userFields = 7; //User config fields
+}
+
+message C2S_CreateAppResponse{
+    uint32 appId = 1; //App id
+    google.protobuf.Timestamp createTime = 2; //Create time
+}
+
+message C2S_UpdateAppRequest{
+    uint32 appId = 1; //App id
+    string openId = 2; //Open id
+    optional string name = 3; //App name
+    optional string namespace = 4; //App namespace
+    optional string organizationId = 5; //Organization id
+    optional string channel = 6; //Channel
+    repeated google.protobuf.Struct configFields = 7; //App config fields
+    repeated google.protobuf.Struct userFields = 8; //User config fields
+}
+
+message C2S_UpdateAppResponse{
+    google.protobuf.Timestamp modifiedTime = 1; //Modified time
+}
+
+message C2S_GetAppRequest{
+    uint32 appId = 1; //App id
+}
+
+message App{
+    uint32 appId = 1; //App id
+    string name = 2; //App name
+    string namespace = 3; //App namespace
+    string configFormat = 4; //Config format
+    string organizationId = 5; //Organization id
+    string channel = 6; //Channel
+    repeated google.protobuf.Struct configFields = 7; //App config fields
+    repeated google.protobuf.Struct userFields = 8; //User config fields
+    google.protobuf.Timestamp createTime = 9; //Create time
+    google.protobuf.Timestamp modifiedTime = 10; //Modified time
+}
+
+message C2S_GetAppResponse{
+    App app = 1; //App
+}
+
+message C2S_SyncAppRequest{
+    string openId = 1; //Open id, new creator of the app, if app already exist then it must be the creator
+    uint32 appId = 2; //App id
+    string account = 3; //Jumeaux account
+    string password = 4; //Jumeaux password, md5 encoded
+    string domain = 5; //Domain
+    bool override = 6; //Override
+}
+
+message C2S_SyncAppResponse{
+    google.protobuf.Timestamp syncTime = 1; //Sync time
+}
+
+
+
+service AppConfigService{
+    //Get app config schema
+    rpc GetAppConfigSchema (C2S_GetAppConfigSchemaRequest) returns (C2S_GetAppConfigSchemaResponse) {}
+    //Create app config
+    rpc CreateAppConfig (C2S_CreateAppConfigRequest) returns (C2S_CreateAppConfigResponse) {}
+    //Update app config
+    rpc UpdateAppConfig (C2S_UpdateAppConfigRequest) returns (C2S_UpdateAppConfigResponse) {}
+    //Delete app config
+    rpc DeleteAppConfig (C2S_DeleteAppConfigRequest) returns (C2S_DeleteAppConfigResponse) {}
+    //Get app config
+    rpc GetAppConfig (C2S_GetAppConfigRequest) returns (C2S_GetAppConfigResponse) {}
+    //Sync app config
+    rpc SyncAppConfig (C2S_SyncAppConfigRequest) returns (C2S_SyncAppConfigResponse) {}
+}
+
+message C2S_GetAppConfigSchemaRequest {
+    uint32 appId = 1; //App id
+}
+
+message C2S_GetAppConfigSchemaResponse {
+    google.protobuf.Struct appConfigSchema = 1; //App config schema
+}
+
+message C2S_CreateAppConfigRequest {
+    uint32 appId = 1; //App id
+    google.protobuf.Struct config = 2; //App config
+}
+
+message C2S_CreateAppConfigResponse {
+    google.protobuf.Timestamp createTime = 1; //Create time
+}
+
+message C2S_UpdateAppConfigRequest {
+    uint32 appId = 1; //App id
+    optional bool override = 2; //Override
+    google.protobuf.Struct config = 3; //App config
+}
+
+message C2S_UpdateAppConfigResponse {
+    google.protobuf.Timestamp modifiedTime = 1; //Modified time
+}
+
+message C2S_DeleteAppConfigRequest {
+    uint32 appId = 1; //App id
+}
+
+message C2S_DeleteAppConfigResponse {
+    google.protobuf.Timestamp deleteTime = 1; //Delete time
+}
+
+message C2S_GetAppConfigRequest {
+    uint32 appId = 1; //App id
+}
+
+message C2S_GetAppConfigResponse {
+    string name = 1; //App name
+    string namespace = 2; //App namespace
+    google.protobuf.Struct config = 3; //App config
+}
+
+message C2S_SyncAppConfigRequest {
+    uint32 appId = 1; //App id
+    string account = 2; //Jumeaux account
+    string password = 3; //Jumeaux password, md5 encoded
+    string domain = 4; //Domain
+    bool override = 5; //Override
+}
+
+message C2S_SyncAppConfigResponse {
+    google.protobuf.Timestamp syncTime = 1; //Sync time
+}
+
+
+
+service UserConfigService{
+    //Get user config schema
+    rpc GetUserConfigSchema (C2S_GetUserConfigSchemaRequest) returns (C2S_GetUserConfigSchemaResponse) {}
+    //Create user config
+    rpc CreateUserConfig (C2S_CreateUserConfigRequest) returns (C2S_CreateUserConfigResponse) {}
+    //Update user config
+    rpc UpdateUserConfig (C2S_UpdateUserConfigRequest) returns (C2S_UpdateUserConfigResponse) {}
+    //Get user config
+    rpc GetUserConfig (C2S_GetUserConfigRequest) returns (C2S_GetUserConfigResponse) {}
+}
+
+message C2S_GetUserConfigSchemaRequest {
+    uint32 appId = 1; //App id
+}
+
+message C2S_GetUserConfigSchemaResponse {
+    google.protobuf.Struct userConfigSchema = 1; //User config schema
+}
+
+message C2S_GetUserConfigRequest {
+    uint32 appId = 1; //App id
+    string openId = 2; //Open id
+}
+
+message C2S_GetUserConfigResponse {
+    google.protobuf.Struct userConfig = 1; //User config
+}
+
+message File{
+    string name = 1; //File name
+    bytes content = 2; //File content
+}
+
+message C2S_CreateUserConfigRequest {
+    uint32 appId = 1; //App id
+    string openId = 2; //Open id
+    google.protobuf.Struct userConfig = 3; //User config
+    repeated File files = 4; //Files
+}
+
+message C2S_CreateUserConfigResponse {
+    google.protobuf.Timestamp createTime = 1; //Create time
+}
+
+message C2S_UpdateUserConfigRequest {
+    uint32 appId = 1; //App id
+    string openId = 2; //Open id
+    optional bool override = 3; //Override
+    google.protobuf.Struct userConfig = 4; //User config
+    repeated File files = 5; //Files
+}
+
+message C2S_UpdateUserConfigResponse {
+    google.protobuf.Timestamp modifiedTime = 1; //Modified time
+}
+
+
+
+service IDGeneratorService {
+    //Create id generator config
+    rpc CreateIDGenConfig (C2S_CreateIDGenConfigRequest) returns (C2S_CreateIDGenConfigResponse);
+    //Update id generator config
+    rpc UpdateIDGenConfig (C2S_UpdateIDGenConfigRequest) returns (C2S_UpdateIDGenConfigResponse);
+    //Get id generator config
+    rpc GetIDGenConfig (C2S_GetIDGenConfigRequest) returns (C2S_GetIDGenConfigResponse);
+    //Returns list of ids
+    rpc GetIDs (C2S_GetIDsRequest) returns (C2S_GetIDsResponse);
+    //Returns list of shuffled ids, note these ids are already generated by id generator
+    rpc GetShuffleIDs (C2S_ShufflingIDsRequest) returns (C2S_GetIDsResponse);
+    //Returns list of unshuffled ids, note these ids are already generated by id generator
+    rpc GetUnshuffleIDs (C2S_ShufflingIDsRequest) returns (C2S_GetIDsResponse);
+}
+
+message C2S_CreateIDGenConfigRequest{
+    string name = 1; //Name of the ID generator, example jumeaux
+    uint32 length = 2; //Length of the id
+    string shardingBits = 3; //Sharding bits, 0xfff000
+    string configBits = 4; //Config bits, 0x000fff
+}
+
+message C2S_CreateIDGenConfigResponse{
+    google.protobuf.Timestamp createTime = 1; //Create time
+}
+
+message C2S_UpdateIDGenConfigRequest{
+    string name = 1; //Name of the ID generator, example jumeaux
+    uint32 length = 2; //Length of the id
+    string shardingBits = 3; //Sharding bits, 0xfff000
+}
+
+message C2S_UpdateIDGenConfigResponse{
+    google.protobuf.Timestamp modifiedTime = 1; //Modified time
+}
+
+message C2S_GetIDGenConfigRequest{
+    string name = 1; //Name of the ID generator, example jumeaux
+}
+
+message Segment{
+    string usage = 1; //Id generator segments are created based on usage, example openId
+    int64 min = 2; //Min area
+    int64 max = 3; //Max area
+    int64 last = 4; //Last id
+    bool maxed = 5; //Maxed
+}
+
+message C2S_GetIDGenConfigResponse{
+    uint32 length = 1; //Length of the id
+    string shardingBits = 2; //Sharding bits, 0xfff000
+    string configBits = 3; //Config bits, 0x000fff
+    repeated Segment segments = 4; //Segments
+}
+
+message C2S_GetIDsRequest{
+    //Name of the ID generator, example jumeaux
+    string name = 1;
+    //Id generator segments are created based on usage, example openId
+    string usage = 2;
+    //Ids batch size, if remaining ids in a segment are less than size, it will return the remaining ids
+    int32 size = 3;
+    //Segment size of the allocation from the shardingBits.
+    int32 segmentSize = 4;
+    //Shuffle the ids
+    bool shuffle = 5;
+}
+
+message C2S_GetIDsResponse{
+    repeated uint64 ids = 1; //List of ids
+}
+
+message C2S_ShufflingIDsRequest{
+    //Name of the ID generator, since shuffling is config based
+    string name = 1;
+    repeated uint64 ids = 2; //List of ids
+}
+
+
+
+service AccessKeyService {
+    rpc GenerateAccessKey (C2S_GenerateAccessKeyRequest) returns (C2S_GenerateAccessKeyResponse) {}
+    rpc RevokeAccessKey (C2S_RevokeAccessKeyRequest) returns (C2S_RevokeAccessKeyResponse) {}
+    rpc GetSecretKey (C2S_GetSecretKeyRequest) returns (C2S_GetSecretKeyResponse) {}
+}
+
+message C2S_GenerateAccessKeyRequest{
+    uint32 appId = 1; //App id
+    string openId = 2; //Open id of the app creator
+    string organizationId = 3; //Organization id
+}
+
+message C2S_GenerateAccessKeyResponse{
+    string accessKey = 1; //Access key
+}
+
+message C2S_RevokeAccessKeyRequest{
+    string accessKey = 1; //Access key
+    uint32 appId = 2; //App id
+    string openId = 3; //Open id of the app creator
+}
+
+message C2S_GetSecretKeyRequest{
+    string accessKey = 1; //Access key
+}
+
+message C2S_GetSecretKeyResponse{
+    uint32 appId = 1; //App id
+    string organizationId = 2; //Organization id
+    string secretKey = 3; //Secret key
+}
+
+message C2S_RevokeAccessKeyResponse{
+    google.protobuf.Timestamp revokeTime = 1; //Revoke time
+}
+
+
+
+service ConfigInstanceService{
+    //Create instance config
+    rpc CreateInstanceConfig (C2S_CreateInstanceRequest) returns (C2S_CreateInstanceResponse);
+    //Update instance config
+    rpc UpdateInstanceConfig (C2S_UpdateInstanceRequest) returns (C2S_UpdateInstanceResponse);
+    //Delete instance config
+    rpc DeleteInstanceConfig (C2S_DeleteInstanceRequest) returns (C2S_DeleteInstanceResponse);
+    //Get instance config
+    rpc GetInstanceConfig (C2S_GetInstanceRequest) returns (C2S_GetInstanceResponse);
+    //Get config
+    rpc GetConfig (C2S_GetConfigRequest) returns (C2S_GetConfigResponse);
+    //List instances
+    rpc ListInstanceConfigByApp (C2S_ListInstancesRequest) returns (C2S_ListInstancesResponse);
+    //Get instanceId
+    rpc GetInstanceId (C2S_GetInstanceIdRequest) returns (C2S_GetInstanceIdResponse);
+    //Sync instance config
+    rpc SyncInstanceConfig (C2S_SyncInstanceRequest) returns (C2S_SyncInstanceResponse);
+}
+
+message C2S_CreateInstanceRequest{
+    uint32 appId = 1; //App id to which it belongs too
+    uint32 configureAppId = 2; //App id of schema it should be using
+    string name = 3; //Custom name of the instance. ^[a-zA-Z][a-zA-Z0-9_]*$
+    google.protobuf.Struct config = 4; //Config json
+}
+
+message  C2S_CreateInstanceResponse{
+    uint32 instanceId = 1; //Instance id
+    google.protobuf.Timestamp createTime = 2; //Create time
+}
+
+message C2S_UpdateInstanceRequest{
+    uint32 instanceId = 1; //Instance id
+    uint32 appId = 2; //App id to which it belongs too
+    string name = 3; //Name of the instance.
+    google.protobuf.Struct config = 4; //Config json
+    optional bool override = 5; //Override config, default is partial update
+}
+
+message C2S_UpdateInstanceResponse{
+    google.protobuf.Timestamp modifiedTime = 1; //Modify time
+    google.protobuf.Struct config = 2; //Updated config json
+}
+
+message C2S_DeleteInstanceRequest{
+    uint32 instanceId = 1; //Instance id
+    uint32 appId = 2; //App id to which it belongs too
+    string name = 3; //Name of the instance.
+}
+
+message C2S_DeleteInstanceResponse{
+    google.protobuf.Timestamp deletedTime = 1; //Delete time
+}
+
+message C2S_GetInstanceRequest{
+    uint32 instanceId = 1; //Instance id
+    uint32 appId = 2; //App id to which it belongs too
+    string name = 3; //Name of the instance.
+}
+
+message InstanceConfig{
+    int32 instanceId = 1;
+    string name = 2; //Name of the instance.
+    uint32 appId = 3; //App id to which it belongs too
+    uint32 configureAppId = 4; //App id of schema it should be using
+    google.protobuf.Struct config = 5; //Config json
+    google.protobuf.Timestamp createTime = 6; //Create time
+    google.protobuf.Timestamp modifiedTime = 7; //Modify time
+}
+
+message C2S_GetInstanceResponse{
+    InstanceConfig instance = 1;
+}
+
+message C2S_GetConfigRequest{
+    uint32 instanceId = 1; //Instance id
+    uint32 appId = 2; //App id to which it belongs too
+    string name = 3; //Name of the instance.
+    string key = 4; //Json key path of the config, seperated by / cause dot is used in json key
+}
+
+message C2S_GetConfigResponse{
+    google.protobuf.Struct config = 1; //Config json
+}
+
+message C2S_ListInstancesRequest{
+    uint32 appId = 1; //App id to which it belongs too
+}
+
+message C2S_ListInstancesResponse{
+    string appName = 1; //Name of the app
+    repeated InstanceConfig instances = 2;
+}
+
+message C2S_GetInstanceIdRequest{
+    uint32 appId = 1; //App id to which it belongs too
+    string name = 2; //Name of the instance.
+}
+
+message C2S_GetInstanceIdResponse{
+    uint32 instanceId = 1; //Instance id
+}
+
+message C2S_SyncInstanceRequest{
+    uint32 instanceId = 1; //Instance id
+    string account = 2; //Jumeaux account
+    string password = 3; //Jumeaux password, md5 encoded
+    string domain = 4; //Domain, example https://dev.zixel.cn
+    bool override = 5; //Override if existing instance config
+}
+
+message C2S_SyncInstanceResponse{
+    google.protobuf.Timestamp syncTime = 1; //Sync time
+}
+
+
+
+service NewIDService {
+    //New ID from app manager id generator (appId and instanceId)
+    rpc NewID (C2S_NewIDRequest) returns (C2S_NewIDResponse);
+}
+
+message C2S_NewIDRequest{}
+
+message C2S_NewIDResponse{
+    uint32 id = 1; //Reserved id
+}
+
+
+
+service FunctionService {
+    //Create function
+    rpc CreateFunction (C2S_CreateFunctionRequest) returns (C2S_CreateFunctionResponse);
+    //Update function
+    rpc UpdateFunction (C2S_UpdateFunctionRequest) returns (C2S_UpdateFunctionResponse);
+    //Delete function
+    rpc DeleteFunction (C2S_DeleteFunctionRequest) returns (C2S_DeleteFunctionResponse);
+    //List functions by path
+    rpc ListFunctionsByPath (C2S_ListFunctionsByPathRequest) returns (C2S_ListFunctionsResponse);
+    //List functions by app
+    rpc ListFunctionsByApp (C2S_ListFunctionsByAppRequest) returns (C2S_ListFunctionsResponse);
+}
+
+message C2S_CreateFunctionRequest{
+    uint32 appId = 1; //App id to which it belongs too
+    string name = 2; //Name of the function
+    string path = 3; //Path of the function
+    bool isEnabled = 4; //Is enabled
+}
+
+message C2S_CreateFunctionResponse{
+    google.protobuf.Timestamp createTime = 1; //Create time
+}
+
+message C2S_UpdateFunctionRequest{
+    uint32 appId = 1; //App id to which it belongs too
+    optional string name = 2; //New name of the function
+    string path = 3; //Path of the function
+    optional string newPath = 4; //New path of the function
+    optional bool isEnabled = 5; //Is enabled
+}
+
+message C2S_UpdateFunctionResponse{
+    google.protobuf.Timestamp modifiedTime = 1; //Modify time
+}
+
+message C2S_DeleteFunctionRequest{
+    uint32 appId = 1; //App id to which it belongs too
+    string path = 2; //Path of the function
+}
+
+message C2S_DeleteFunctionResponse{
+    google.protobuf.Timestamp deletedTime = 1; //Delete time
+}
+
+message Switch{
+    uint32 appId = 1; //App id to which it belongs too
+    string name = 2; //Name of the function
+    string path = 3; //Path of the function
+    bool isEnabled = 4; //Is enabled
+}
+
+message C2S_ListFunctionsByPathRequest{
+    string path = 1; //Path of the function, all paths that start with this path will be returned
+}
+
+message C2S_ListFunctionsByAppRequest{
+    uint32 appId = 1; //App id to which it belongs too
+}
+
+message C2S_ListFunctionsResponse{
+    repeated Switch functions = 1;
+}
+
+
+
+service PackageService{
+    //Create package
+    rpc CreatePackage (C2S_CreatePackageRequest) returns (C2S_CreatePackageResponse);
+    //Update package
+    rpc UpdatePackage (C2S_UpdatePackageRequest) returns (C2S_UpdatePackageResponse);
+    //Delete package
+    rpc DeletePackage (C2S_DeletePackageRequest) returns (C2S_DeletePackageResponse);
+    //Get latest package
+    rpc GetLatestPackage (C2S_GetLatestPackageRequest) returns (C2S_GetLatestPackageResponse);
+    //Get package by version
+    rpc GetPackageByVersion (C2S_GetPackageByVersionRequest) returns (C2S_GetPackageByVersionResponse);
+}
+
+message Function{
+    uint32 appId = 1; //App id to which it belongs too
+    string path = 2; //Path of the function
+}
+
+message C2S_CreatePackageRequest{
+    string openId = 1; //Open id of package owner
+    string name = 2; //Name of the package
+    string version = 3; //Version of the package
+    repeated Function functions = 4; //Functions
+}
+
+message C2S_CreatePackageResponse{
+    google.protobuf.Timestamp createTime = 1; //Create time
+}
+
+message C2S_UpdatePackageRequest{
+    string openId = 1; //Open id of package owner
+    string name = 2; //Name of the package
+    optional string newName = 3; //New name of the package
+    string version = 4; //Version of the package
+    optional string newVersion = 5; //New version of the package
+    repeated Function functions = 6; //Functions
+}
+
+message C2S_UpdatePackageResponse{
+    google.protobuf.Timestamp modifiedTime = 1; //Modify time
+}
+
+message C2S_DeletePackageRequest{
+    string openId = 1; //Open id of package owner
+    string name = 2; //Name of the package
+    string version = 3; //Version of the package
+}
+
+message C2S_DeletePackageResponse{
+    google.protobuf.Timestamp deletedTime = 1; //Delete time
+}
+
+message C2S_GetLatestPackageRequest{
+    string name = 1; //Name of the package
+}
+
+message C2S_GetLatestPackageResponse{
+    string name = 1; //Name of the package
+    repeated Switch functions = 2; //Functions
+    string version = 3; //Version of the package
+}
+
+message C2S_GetPackageByVersionRequest{
+    string name = 1; //Name of the package
+    string version = 2; //Version of the package
+}
+
+message C2S_GetPackageByVersionResponse{
+    string name = 1; //Name of the package
+    repeated Switch functions = 2; //Functions
+}

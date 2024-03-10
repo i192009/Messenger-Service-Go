@@ -1,0 +1,217 @@
+syntax = "proto3";
+
+package com.zixel.file.backend;
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_package = "com.zixel.file.backend.lib";
+option java_outer_classname = "FileManagerServiceProto";
+option go_package = "./;services";
+// 文件管理服务定义
+service FileManagerService {
+  // 获取下载地址
+  rpc GetDownLoadSignUrl (DownLoadSignUrlRequest) returns (UrlReply) {}
+  // 获取上传地址
+  rpc GetUploadFileUrl (UploadFileUrlRequest) returns (UrlReply) {}
+  // 获取文件大小地址
+  rpc GetObjectSize (ObjectSizeRequest) returns (ObjectSizeReply) {}
+
+  // 创建文件记录
+  rpc createMetaData (ObjectMetaDataRequest) returns (MetaDataReply) {}
+
+  // 查询文件历史
+  rpc queryHistoryMetas (MetaDataRequest) returns (MetaDataListReply) {}
+
+  // 复制对象
+  rpc copyObject (CopyObjectRequest) returns (CopyObjectReply) {}
+
+  rpc putObjectWithBytes(C2S_PutObjectWithBytesReq) returns (C2S_PutObjectWithBytesRpn){}
+
+  rpc putObjectWithBytesStream(stream C2S_PutObjectWithBytesReq) returns (C2S_PutObjectWithBytesRpn){}
+
+  rpc getScopeInfo(C2S_GetScopeInfoReq) returns (C2S_GetScopeInfoRpn){}
+
+  rpc ListObjects(C2S_ListObjectsReq_t) returns (C2S_ListObjectsRpn_t) {}
+}
+
+// 传入获取下载地址的参数
+message DownLoadSignUrlRequest {
+  // 资源id
+  int32 scopeId = 1;
+  // 文件key
+  string key = 2;
+
+  optional bool useInnerEndpoint = 10; // 是否使用内网地址
+
+  optional int64 expireTimeInSecond = 20; // 过期时间, 单位秒
+
+}
+
+// 传入上传文件参数
+message UploadFileUrlRequest {
+  // 资源id
+  int32 scopeId = 1;
+  // 文件key
+  string key = 2;
+  // 超时时间
+  int64 expires = 3;
+  // 文件大小
+  int64 size = 4;
+
+  bool customContentType = 5; // 是否自定义contentType, 该值为true时, contentType参数有效
+
+  string contentType = 6;
+
+  optional bool useInnerEndpoint = 10; // 是否使用内网地址
+}
+
+
+// 传入获取文件大小参数
+message ObjectSizeRequest {
+  // 资源id
+  int32 scopeId = 1;
+  // 文件key
+  string key = 2;
+}
+
+// 传入复制对象的参数
+message CopyObjectRequest {
+  // 资源id
+  int32 scopeId = 1;
+  // 文件key
+  string key = 2;
+  // 原来的key
+  string sourceKey = 3;
+  // 目标桶
+  string bucket = 4;
+
+}
+message MetaDataRequest {
+  // 元数据id
+  string MetaId = 1;
+  string appId = 2;
+}
+
+message ObjectMetaDataRequest {
+  // 资源id
+  int32 scopeId = 1;
+  // 应用id
+  string appId = 2;
+  // 用户id
+  string openId = 3;
+  // 文件key
+  string key = 4;
+  // 文件名称
+  string name = 5;
+  // 文件类型
+  string type = 6;
+  // 备注
+  string remark = 7;
+  // 用户数据
+  string userData = 8;
+  //元数据id
+  string MetaId = 9;
+
+  int64 spaceSize = 10;
+
+}
+
+message MetaDataListReply {
+  message MetaData {
+    // 资源id
+    int32 scopeId = 1;
+    // 应用id
+    string appId = 2;
+    // 用户id
+    string openId = 3;
+    // 文件key
+    string key = 4;
+    // 文件名称
+    string name = 5;
+    // 文件类型
+    string type = 6;
+    // 备注
+    string remark = 7;
+    // 用户数据
+    string userData = 8;
+    //版本
+    int32 version = 9;
+    //元数据id
+    string MetaId = 10;
+    int64 spaceSize = 11;
+  }
+  repeated MetaData MetaDatas = 1;
+}
+
+
+message UrlReply {
+  string url = 1;
+}
+
+message MetaDataReply {
+  string MetaId = 1;
+  int32 version = 2;
+}
+
+message ObjectSizeReply {
+  int64 size = 1;
+}
+
+message CopyObjectReply {
+}
+
+message C2S_PutObjectWithBytesReq{
+  string key = 10;
+  int32 scopeId = 20;
+  string expires = 30;
+  bytes file = 40;
+
+}
+
+message C2S_PutObjectWithBytesRpn{
+}
+
+message C2S_GetScopeInfoReq{
+  int32 scopeId = 10;
+  optional bool useInnerEndpoint = 20; // 是否使用内网地址
+}
+
+message C2S_GetScopeInfoRpn{
+  int32 scopeId = 10;
+  int32 scopeConfigId = 20;
+  string accessKey = 30;
+  string secretKey = 40;
+  string endpoint = 50;
+  string bucket = 60;
+  string protocol = 70; // http/https
+}
+
+message C2S_ListObjectsReq_t {
+
+  int32 scopeId = 10;
+  ListObjectsReq listObjectsReq = 20;
+}
+
+message C2S_ListObjectsRpn_t {
+  string bucket = 10; // 桶名
+  bool truncated = 20; // 每次至多返回1000个对象,如果指定桶包含的对象数量大于1000,则该值为true
+  string nextMarker = 30; // 每次至多返回1000个对象,如果指定桶包含的对象数量大于1000,可通过该值获取下次列举的起始位置
+  repeated string commonPrefixes = 40; // 文件夹的子文件夹
+  string delimiter = 50; //
+  int32 maxKeys = 60; //
+  string prefix = 70; //
+  repeated StorageObject storageObjects = 80; // 文件夹/文件对象, 注意 这个会把文件夹一起返回, 可通过判断最后一位是不是"/"来进行区分
+}
+
+message ListObjectsReq {
+
+  string prefix = 10; // 限定返回的对象名必须带有prefix前缀
+  string marker = 20; // 列举对象的起始位置，返回的对象列表将是对象名按照字典序排序后该参数以后的所有对象
+  int32 maxKeys = 30; // 列举对象的最大数目，取值范围为1~1000，当超出范围时，按照默认的1000进行处理。
+  string delimiter = 40; // 用于对对象名进行分组的字符。对于对象名中包含delimiter的对象，其对象名（如果请求中指定了prefix，则此处的对象名需要去掉prefix）中从首字符至第一个delimiter之间的字符串将作为一个分组并作为commonPrefix返回。
+}
+
+message StorageObject {
+
+  string objectKey = 10; // 对象在存储上的key
+}

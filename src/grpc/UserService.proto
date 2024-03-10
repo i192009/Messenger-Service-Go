@@ -1,0 +1,763 @@
+syntax = "proto3";
+
+package user;
+import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.user.lib";
+option java_outer_classname = "UserServiceProto";
+option go_package = "./;services";
+
+
+/*******************************************
+                用户服务接口V1
+ 以下接口作为用户系统对业务系统公开接口
+ 未对后端服务开放更新接口，因为考虑用户信息更新需求应全部来自前端用户，不会来自后端业务服务（账户系统除外）
+ *******************************************/
+service UserService {
+  // 校验用户访问凭证
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用TokenService.CheckToken
+  rpc CheckToken(CheckTokenRequest) returns (CheckTokenReply) {}
+  // 校验用户访问凭证(流接口)
+  rpc CheckTokenStream(stream CheckTokenStreamRequest) returns (stream CheckTokenStreamReply) {}
+  // 获取用户信息，返回的是叠加应用信息的合成用户信息
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用UserServiceV2.GetUserInfo
+  rpc GetUser (GetUserRequest) returns (CompoundInfoReply) {}
+  // 批量获取用户信息，返回的是叠加应用信息的合成用户信息列表
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用UserServiceV2.BatchGetUserInfo
+  rpc GetUserBatch (GetUserBatchRequest) returns (CompoundInfoBatchReply) {}
+  // 分页获取应用用户列表
+  rpc GetUserList(GetUserListRequest) returns (SketchyInfoPageReply) {}
+  // 获取头像库头像
+  rpc GetAvatars(C2S_GetAvatars_Req) returns (S2C_GetAvatars_Rpn) {}
+}
+
+/*******************************************
+                用户管理接口
+ 一般情况来说，不会对第三方应用开放用户基本信息操作接口，以下接口主要是账户系统登录时使用
+ *******************************************/
+service UserBasicService {
+  // 首次登录创建用户
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用UserServiceV2.CreateUser
+  rpc CreateUser (CreateUserRequest) returns (CreateUserReply) {}
+  // 获取用户访问凭证（将更新授权应用、第三方账户传来的用户信息）
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用TokenService.GetAccessToken
+  rpc GetAccessToken (GetAccessTokenRequest) returns (GetAccessTokenReply) {}
+  // 更新用户基本信息
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用UserServiceV2.UpdateUserInfo
+  rpc UpdateUserBasic (UpdateUserBasicRequest) returns (google.protobuf.Empty) {}
+  // 获取基本信息中的联系信息，仅在账户系统找回密码第一步调用时使用
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用UserServiceV2.GetUserInfo
+  rpc GetUserContact (GetUserContactRequest) returns (UserContactReply) {}
+  // 注销用户访问凭证，在登录账户信息发生变化时使用
+  // @Deprecated 本接口已废弃，可以使用，不再更新。新接入请使用UserServiceV2.RevokeAccessToken
+  rpc RevokeAccessToken (C2S_RevokeAccessToken_Req) returns (google.protobuf.Empty) {}
+}
+
+/*******************************************
+                用户管理接口V2
+用户系统Grpc接口版本V2，主要更新包括：
+1. 增加用户身份体系，新增UserId、EmployeeId、OpenId、UnionId
+2. 全局用户信息与应用用户信息的分离
+使用方法：
+1. V1版本相关接口依旧可以正常运转，但已经停止维护，无法使用此处的新功能
+2. 新系统接入应尽量使用此接口，使用旧接口的系统应尽快迁移至新接口
+ *******************************************/
+service UserServiceV2 {
+  // 创建用户
+  rpc CreateUser (C2S_UserCreateV2_Req) returns (S2C_UserCreateV2_Rpn) {}
+  // 获取用户信息
+  rpc GetUserInfo (C2S_UserInfoGetV2_Req) returns (S2C_UserInfoGetV2_Rpn) {}
+  // 批量获取用户信息
+  rpc BatchGetUserInfo (C2S_BatchUserInfoGetV2_Req) returns (S2C_BatchUserInfoGetV2_Rpn) {}
+  // 更新用户信息，仅允许更新非敏用户信息
+  rpc UpdateUserInfo (C2S_UserInfoUpdateV2_Req) returns (google.protobuf.Empty) {}
+  // 创建用户身份
+  // 如果已有对应身份，将返回现有身份的UserId、UnionId、OpenId
+  rpc CreateIdentity (C2S_IdentityCreate_Req) returns (S2C_IdentityCreate_Rpn) {}
+  // 获取用户身份
+  // 可设置身份不存在时是否自动创建
+  rpc BatchGetIdentities(C2S_IdentitiesBatchGet_Req) returns (S2C_IdentitiesBatchGet_Rpn) {}
+  // 根据账户获取用户身份
+  rpc GetIdentityByAccount (C2S_IdentityGetByAccount_Req) returns (S2C_IdentityGetByAccount_Rpn) {}
+  // 查询用户列表
+  rpc QueryUser (C2S_UserQueryReq_t) returns (S2C_UserQueryRpn_t) {}
+}
+
+/*******************************************
+                用户访问凭证接口
+ *******************************************/
+service TokenService {
+  // 获取用户访问凭证（将更新授权应用、第三方账户传来的用户信息）
+  rpc GetAccessToken (C2S_AccessTokenGetV2_Req) returns (S2C_AccessTokenGetV2_Rpn) {}
+  // 注销用户访问凭证，在登录账户信息发生变化时使用
+  rpc RevokeAccessToken (C2S_RevokeAccessTokenV2_Req) returns (google.protobuf.Empty) {}
+  // 注销用户全部访问凭证，在登录账户信息发生变化时使用
+  rpc RevokeAllAccessToken (C2S_RevokeAllAccessTokenV2_Req) returns (google.protobuf.Empty) {}
+  // 校验用户访问凭证
+  rpc CheckToken(C2S_CheckTokenV2_Req) returns (S2C_CheckTokenV2_Rpn) {}
+}
+
+/*******************************************
+                用户后台接口
+ *******************************************/
+service UserAdminService {
+  // 获取用户后台详情
+  rpc GetUserDetail (C2S_UserAdminDetailGet_Req) returns (S2C_UserAdminDetailGet_Rpn) {}
+}
+
+/*******************************************
+                迁移兼容接口
+                专为数据迁移准备的接口
+ *******************************************/
+service CompatibilityService {
+  // 根据用户旧openId获取新openId, 如果不存在,会自动生成
+  rpc GetNewOpenId (C2S_NewOpenIdGet_Req) returns (S2C_NewOpenIdGet_Rpn) {}
+}
+
+/*******************************************
+                通用数据模型V2
+ *******************************************/
+// 用户对应账户信息
+message AccountInfo { // 用户对应账号信息
+  string source = 10;            // 用户对应的账号来源
+  string sourceId = 20;          // 账号Id
+}
+
+// 公司信息
+message Organization {
+  string company = 10;         // 公司名称
+  string title = 20;         // 头衔
+  string name = 30;          // 员工姓名
+  string phone = 40;         // 联系方式
+  string address = 50;         // 公司地址
+}
+
+// 用户非敏信息
+message PlainUserInfo {
+  string name = 10;              // 中文名
+  optional string enName = 20;   // 英文名
+  optional int32 gender = 30;  // male-男性 female-女性
+  optional Organization organization = 40;   // 公司组织
+  // 头像
+  // 与http请求不同，grpc返回时不会将头像自动转换为obs链接，以防调用方需要对原始文件名进一步存储，存储obs链接将会失效
+  optional string avatar = 50;
+  optional string avatarBig = 51;
+  optional string avatarMiddle = 52;
+  optional string avatarThumb = 53;
+}
+
+// 用户敏感信息
+message SensitiveUserInfo {
+  optional string phone = 41;       // 联系方式-手机号码. 联系方式修改时需要验证码认证，仅全局用户信息中有，各应用均继承本信息
+  optional string email = 42;       // 联系方式-邮箱. 联系方式修改时需要验证码认证，仅全局用户信息中有，各应用均继承本信息
+  optional string realName = 43;    // 实名
+  optional string idCard = 44;      // 身份证号
+
+}
+
+// 查询用户列表时返回的最简用户信息
+message MicroUser {
+  string userId = 10;     // 用户userId
+  string employeeId = 11;  // 如果返回信息中此字段不为0，说明用户在该租户下有自定义信息，且已叠加在内
+  string openId = 12;      // 如果返回信息中此字段不为0，说明用户在该应用下有自定义信息，且已叠加在内
+  string unionId = 13;     // 如果返回信息中此字段不为0，说明用户在该应用下有自定义信息，且已叠加在内
+  string name = 14;        // 昵称(中文名）
+  string phone = 15;       // 手机号码
+  string email = 16;       // 邮箱
+  repeated AccountInfo accountInfos = 17;      // 用户对应账户在账户系统中的信息，主要用于存储第三方账户openId
+  int64 createTimeStamp = 18;        // 创建时间，即注册时间
+  int64 loginTimeStamp = 19;       // 上次登录时间
+}
+
+/*******************************************
+                用户管理接口V2数据模型
+ *******************************************/
+// 用户创建参数
+message C2S_UserCreateV2_Req {
+  string source = 10;  // 账号来源
+  string sourceId = 20;  // 账号id
+  PlainUserInfo plainInfo = 30;   // 用户普通信息
+  SensitiveUserInfo sensitiveInfo = 40;   // 用户敏感信息
+}
+// 返回新建用户的uid
+message S2C_UserCreateV2_Rpn {
+  string userId = 10;    // 用户物理身份id
+  bool isNew = 20;        // 是否是新创建用户（新旧用户根据source+sourceId比对），如果是新用户，将返回已有用户信息，并将此设置为false
+}
+
+// 获取用户信息参数
+message C2S_UserInfoGetV2_Req {
+  string id = 10;       // 用户id 支持UserId、EmployeeId、UnionId、OpenId
+
+  // 获取信息层级(靠后的层级将包含前序层级信息)
+  // 1-全局信息,支持 UserId、EmployeeId、UnionId、OpenId
+  // 2-租户层用户信息,支持 EmployeeId、UnionId、OpenId
+  // 3-应用层用户信息,支持 UnionId、OpenId
+  int32 infoType = 20;
+
+  // 返回信息类别控制. 按位控制，不传入时默认为0，仅返回用户是否存在
+  // 0x1 - 用户id信息(userId, employeeId, openId, unionId等)
+  // 0x2 - 用户所处的租户、应用信息
+  // 0x4 - 普通用户信息（用户名等用户画像信息）
+  // 0x8 - 敏感用户信息（电话号码、邮箱、实名信息等）
+  // 0x10 - 用户辅助信息（用户授权信息、账户信息等）
+  // 0x20 - 用户其它信息（创建时间、修改时间等）
+  int32 infoSelector = 30;
+
+  // 返回信息转换控制
+  // 是否将用户头像信息转换为obs链接,不传入时默认为true
+  // true - 返回的头像直接是obs链接，适用于直接向前端返回，链接有过期时间，不能用于直接存储
+  // false - 返回的头像是obs存储的key，适用于服务自行存储
+  optional bool convertObs = 40;
+}
+// 用户信息返回
+// exist为false时，仅errorMessage、userId字段返回
+message S2C_UserInfoGetV2_Rpn {
+  bool exist = 1;                     // 请求用户信息是否存在
+  string errorMessage = 2;                 // 用户不存在时的错误提示信息
+
+  // 0x1 - 用户id信息
+  string userId = 10;        // 用户物理身份id
+  optional string employeeId = 11;    // 用户租户身份id, 请求id无法识别出租户身份时，无此字段返回
+  optional string unionId = 12;       // 用户应用身份unionId, 请求id无法识别出应用身份时，无此字段返回
+  optional string openId = 13;        // 用户应用身份openId, 请求id无法识别出应用身份时，无此字段返回
+
+  // 0x2 - 用户所处的租户、应用信息
+  optional string tenantId = 20;  // 从属租户,请求的是全局信息时无返回
+  optional int64 appId = 21;      // 从属应用,请求的是全局信息、租户信息时无返回
+
+  // 0x4 - 普通用户信息（用户名等用户画像信息）
+  optional PlainUserInfo plainInfo = 30;
+
+  // 0x8 - 敏感用户信息
+  optional SensitiveUserInfo sensitiveInfo = 40;
+
+  // 0x10 - 用户其它信息（账户信息等）
+  message AccountInfo { // 用户对应账号信息
+    string source = 10;            // 用户对应的账号来源
+    string sourceId = 20;          // 账号Id
+  }
+  repeated AccountInfo accountInfos = 51;   // 用户对应的账号信息
+
+  // 0x20 - 用户辅助信息
+  optional int64 createTime = 61;
+  optional int64 modifyTime = 62;
+}
+
+message C2S_BatchUserInfoGetV2_Req {
+  repeated string ids = 10;       // 用户id 支持UserId、EmployeeId、UnionId、OpenId，传入必须为同一类型id，且每个id对应不同用户物理身份
+
+  // 获取信息层级(靠后的层级将包含前序层级信息)
+  // 1-全局信息,支持 UserId、EmployeeId、UnionId、OpenId
+  // 2-租户层用户信息,支持 EmployeeId、UnionId、OpenId
+  // 3-应用层用户信息,支持 UnionId、OpenId
+  int32 infoType = 20;
+
+  // 返回信息类别控制. 按位控制，不传入时默认为0，仅返回用户是否存在
+  // 0x1 - 用户id信息(userId, employeeId, openId, unionId等)
+  // 0x2 - 用户所处的租户、应用信息
+  // 0x4 - 普通用户信息（用户名等用户画像信息）
+  // 0x8 - 敏感用户信息（电话号码、邮箱、实名信息等）
+  // 0x10 - 用户辅助信息（用户授权信息、账户信息等）
+  // 0x20 - 用户其它信息（创建时间、修改时间等）
+  int32 infoSelector = 30;
+
+  // 返回信息转换控制
+  // 是否将用户头像信息转换为obs链接,不传入时默认为true
+  // true - 返回的头像直接是obs链接，适用于直接向前端返回，链接有过期时间，不能用于直接存储
+  // false - 返回的头像是obs存储的key，适用于服务自行存储
+  optional bool convertObs = 40;
+}
+message S2C_BatchUserInfoGetV2_Rpn {
+  repeated S2C_UserInfoGetV2_Rpn users = 10;  // 用户信息获取失败时，该用户亦将返回，但exist为false
+}
+
+message C2S_UserInfoUpdateV2_Req {
+  string id = 10;       // 用户id 支持UserId、EmployeeId、UnionId、OpenId
+
+  // 更新信息层级(靠后的层级将包含前序层级信息)
+  // 1-全局信息,支持 UserId、EmployeeId、UnionId、OpenId
+  // 2-租户层用户信息,支持 EmployeeId、UnionId、OpenId
+  // 3-应用层用户信息,支持 UnionId、OpenId
+  int32 infoType = 20;
+
+  PlainUserInfo plainInfo = 30;     // 用户非敏信息更新参数
+}
+
+message C2S_IdentityCreate_Req {
+  string userId = 10;                 // 用户唯一标识符,必须传入
+  string tenantId = 20;               // 租户id,必须传入
+  optional string appId = 30;          // 应用id,需要生成应用身份时才传入
+}
+message S2C_IdentityCreate_Rpn {
+  string userId = 10;                 // 用户唯一标识符
+  string employeeId = 20;             // 租户身份
+  optional string unionId = 30;       // 应用身份，传入appId时才能返回
+  optional string openId = 40;        // 应用身份，传入appId时才能返回
+}
+
+message C2S_IdentitiesBatchGet_Req {
+  repeated string userId = 10;                 // 用户唯一标识符,必须传入
+  string tenantId = 20;               // 租户id,必须传入
+  optional string appId = 30;          // 应用id,需要生成应用身份时才传入
+  bool autoCreate = 40;               // 如果用户租户身份,应用身份不存在,是否自动创建
+}
+
+message S2C_IdentitiesBatchGet_Rpn {
+  repeated S2C_IdentityCreate_Rpn identities = 10;  // 用户身份
+}
+
+message C2S_IdentityGetByAccount_Req {
+  // 控制字段
+  bool autoCreate = 1;   // 如果用户租户身份,应用身份不存在,是否自动创建，默认为false
+
+  // 必填字段
+  string accountSource = 10;    // 帐号来源. 支持jumeaux, feishu, weixin, dingtalk, vision-china
+  string accountId = 11;        // 帐号id. 在同一来源中帐号id唯一，jumeaux为帐号id，第三方平台为unionId，vision-china为视觉中国提供的userId
+  int32 identityType = 20;      // 请求获取的身份类型. 1-userId, 2-employeeId, 3-unionId, 4-openId，请求靠后的字段时，前序字段亦会返回
+
+  // 选填字段
+  optional string tenantId = 30;  // 获取employeeId、unionId、openId时必须传入
+  optional string appId = 40;     // 获取unionId、openId时必须传入
+
+}
+message S2C_IdentityGetByAccount_Rpn {
+  bool exist = 1;                     // 请求账户是否存在对应用户，false时下列信息均不返回
+  // 以下信息，根据请求的identityType返回，请求靠后字段时，前序字段亦会返回
+  optional string userId = 10;
+  optional string employeeId = 20;
+  optional string unionId = 30;
+  optional string openId = 40;
+}
+
+message C2S_UserQueryReq_t {
+  // 查询条件
+  optional string id = 10;   // "模糊查询各类id字段，必须携带id前缀"
+  optional string nameIgnoreLevel = 11;    // "忽略信息层级的用户名，查询全部用户信息中的用户名，不区分全局、租户、应用层级，任一匹配即可"
+  optional string realName = 12;   // "模糊查询实名名字字段"
+  optional string userPhone = 13;    // "模糊查询用户手机字段，即用户联系方式手机"
+  optional string userEmail = 14;    // "模糊查询用户邮箱字段，即用户联系方式邮箱"
+
+  optional string accountPhone = 20;   // "模糊查询账号手机字段，即登录手机号.注意只有在登录时才会为账号生成用户，可能出现有注册了账号但无用户返回情况"
+  optional string accountEmail = 21;   // "模糊查询账号邮箱字段，即登录邮箱.注意只有在登录时才会为账号生成用户，可能出现有注册了账号但无用户返回情况"
+  optional string grantTenant = 22;    // "仅返回在指定企业下存在身份的用户,不传入表示不限", example = "co_123456"
+  optional int64 grantApp = 23;   // "仅返回在指定应用下存在身份的用户,不传入表示不限。传入时，返回信息将叠加指定的应用信息。", example = "1001"
+  optional string source = 24;   // "过滤用户注册来源,现有jumeaux/weixin/feishu/vision-china,不传入表示不限", example = "jumeaux"
+  optional bool timImported = 25;   // "腾讯云IM导入状态,false-未导入，true-已导入"
+
+  optional int64 createTimeStartStamp = 30; // 注册时间起点时间戳（单位ms）,需为过去时间
+  optional int64 createTimeEndStamp = 31; // 注册时间终点时间戳（单位ms）,需为过去时间
+  optional string loginTimeInterval = 32; // 最近登录时间区间,不传入表示不限,支持ISO-8601持续时间格式PnDTnHnMn.nS，如P1DT3H", example = "P7D"
+
+  // 分页与排序
+  optional int32 pageNum = 50;  // 页数, 从1开始, 传入0表示查询全部, 不传入时默认为1
+  optional int32 pageSize = 51; // 每页个数，不小于1, 不传入时默认为20
+  optional string sortField = 52;  // 排序字段,支持createTime/modifyTime/id,不传入时默认为id
+  optional string sortDir = 53;    // 排序方向,只能为升序asc/降序desc,不传入时默认为升序asc
+
+}
+message S2C_UserQueryRpn_t {
+  int32 pageNum = 1;
+  int32 pageSize = 2;
+  int32 totalPage = 3;
+  int64 total = 4;
+  repeated MicroUser users = 5;
+}
+
+/*******************************************
+                用户访问凭证接口数据模型
+ *******************************************/
+// 用户访问凭证获取请求
+message C2S_AccessTokenGetV2_Req {
+  string userId = 10;   // 用户id
+
+  // 登录态数据
+  int64 appId = 20;   // 应用id
+  optional string tenantId = 30;   // 租户ID，可选，不传入时将使用缓存的租户id，如无缓存，将生成PartialToken，对应的用户信息不完整
+  int32 platform = 40;    // 用户登录使用的平台信息
+  string accountSource = 50; // 用户登录的账号来源
+  string accountName = 60; // 用户登录的账号名
+
+  // 用户系统行为控制
+  bool override = 70;   // 是否使用传入的信息覆盖式更新现有用户基本信息，应仅第三方账户登录时设置为true
+  PlainUserInfo plainInfo = 80;  // 用户更新参数 - 仅允许更新普通用户信息，不允许更新敏感用户信息
+}
+
+// 用户访问凭证获取响应
+message S2C_AccessTokenGetV2_Rpn {
+  bool tenantIdExists = 10;   // 是否识别到有效tenantId
+  string token = 20;    // 用户登录凭证，tenantIdExists=true时对应的是完整用户信息，tenantIdExists=false时对应的是部分用户信息
+
+  // tenantIdExists=false时无下列字段
+  optional string openId = 30;  // 用户应用身份openId
+  optional string unionId = 31;  // 用户应用身份unionId
+  optional string tenantId = 32;  // 用户登录租户id
+}
+
+// 注销用户访问凭证请求
+message C2S_RevokeAccessTokenV2_Req {
+  string userId = 10;         // 用户物理身份id
+  int64 appId = 20;           // 应用标识符
+  int32 platform = 30;        // 登录平台 1-pc, 2-mobile, 3-pad
+}
+
+// 注销用户全部访问凭证请求
+message C2S_RevokeAllAccessTokenV2_Req {
+  string userId = 10;         // 用户物理身份id
+}
+
+// 验签请求
+message C2S_CheckTokenV2_Req {
+  string id = 10;             // 用户id 支持UserId、EmployeeId、UnionId、OpenId
+  string appId = 20;          // 拟登录应用，为了兼容网关传入的数值或字符类型的appId，此处定义为string，在用户系统本地转换兼容
+  string token = 30;          // 用户登录凭证
+}
+
+// 验签返回
+message S2C_CheckTokenV2_Rpn {
+  bool isValid = 10;                // token是否有效
+  bool fromSso = 11;                // 是否通过单点登录通过验证
+  optional int64 ssoSource = 12;    // 单点登录验证通过来源，在fromSSO=true时返回
+
+  // 以下信息在token检查通过后返回
+  string uid = 20;                   // 用户物理身份id
+  string employeeId = 30;            // 用户租户身份id
+  string unionId = 40;               // 用户应用身份unionId
+  string openId = 50;                // 用户应用身份openId
+  string tenantId = 60;              // 登录租户
+  int64 appId = 70;                  // 登录应用，用户系统输出的appId均为数值型
+  int32 platform = 80;               // 登录平台(用于区分多终端登录)
+  string accountSource = 90;         // 登录账户来源（一个用户同一时刻仅允许一个账户登录）
+  string accountName = 100;          // 登录账户名（一个用户同一时刻仅允许一个账户登录）
+}
+
+
+/*******************************************
+                用户后台接口数据模型
+ *******************************************/
+// 获取用户后台详情请求
+message C2S_UserAdminDetailGet_Req {
+  string userId = 10;      // 用户uid
+}
+// 获取用户后台详情返回
+message S2C_UserAdminDetailGet_Rpn {
+  // 基础信息
+  string userId = 10;                  // uid
+  string name = 20;                 // 全局信息-用户名
+  string phone = 30;                // 联系手机
+  string email = 40;                // 联系邮箱
+  Organization organization = 50;   // 公司组织
+  int64 createTime = 60;            // 创建时间，时间戳
+  optional int64 modifyTime = 70;   // 修改时间，时间戳
+
+  message AccountInfo {
+    string source = 10;             // 账号注册渠道
+    string sourceId = 20;           // 账号在注册渠道中的唯一id
+  }
+  repeated AccountInfo accountInfos = 80;   // 用户对应账户在账户系统中的信息，主要用于存储第三方账户openId  // 账户信息
+
+  // 关联信息
+  message AppInfoDto {
+    string userId = 10;         // 用户物理身份id
+    string employeeId = 20;     // 用户租户身份id
+    string unionId = 30;        // 用户应用身份unionId
+    string openId = 40;         // 用户应用身份openId
+    string tenantId = 50;       // 所属租户
+    int64 appId = 60;           // 所属应用
+    int64 isvId = 70;           // 所属应用开发商
+    int32 status = 80;          // 状态 1-应用授权正常 2-应用授权已撤销 3-租户授权已撤销
+    string name = 90;           // 应用下的用户名
+  }
+  repeated AppInfoDto appInfos = 90; // 应用信息
+
+  message TenantInfoDto {
+    string userId = 10;         // 用户物理身份id
+    string employeeId = 20;     // 用户租户身份id
+    string tenantId = 30;       // 所属租户
+    string name = 40;           // 租户下的用户名
+  }
+  repeated TenantInfoDto tenantInfos = 100; // 租户信息
+}
+
+message C2S_NewOpenIdGet_Req {
+  string oldOpenId = 10;  // 旧openId
+  string tenantId = 20;   // 企业id
+}
+message S2C_NewOpenIdGet_Rpn {
+  string userId = 10;     // 用户物理身份标识
+  string employeeId = 20;  // 用户租户身份标识
+  string unionId = 30;  // 用户应用身份OpenId
+  string openId = 40;  // 用户应用身份UnionId
+}
+
+/*******************************************
+                通用数据模型
+ *******************************************/
+// 用户基本信息创建/更新/返回参数
+message BasicInfoMsg {
+  string name = 2;              // 中文名
+  optional string enName = 3;   // 英文名
+  // 头像
+  // 与http请求不同，grpc返回时不会将头像自动转换为obs链接，以防调用方需要对原始文件名进一步存储，存储obs链接将会失效
+  optional string avatar = 4;
+  optional string avatarBig = 5;
+  optional string avatarMiddle = 6;
+  optional string avatarThumb = 7;
+  optional string email = 8;    // 邮箱
+  optional string phone = 9;    // 电话号码
+  optional string gender = 10;  // male-男性 female-女性
+  optional string idCard = 11;  // 身份证号
+  optional string realName = 13;  // 实名
+  message Organization {        // 接口兼容，保留此处定义，后续可与全局Organization合并
+    string company = 1;         // 公司名称
+    string title = 2;         // 头衔
+    string phone = 3;         // 公司联系方式
+    string address = 4;         // 公司地址
+    string name = 5;          // 员工姓名
+  }
+  optional Organization organization = 12;   // 公司组织
+}
+
+/*******************************************
+                用户服务接口数据模型
+ *******************************************/
+message CheckTokenRequest {
+  // 支持两种方式校验token，二者只能选其一，同时传入时优先检查openId
+  // 1. 通过uid+appId校验token
+  optional string uid = 10;
+  optional string appId = 11;    // 验签时，必须明确用户请求的应用，以便返回openId信息
+  // 2. 通过openId校验token
+  optional string openId = 12;
+
+  string token = 20;     // 待检查的用户登录凭证
+}
+
+message CheckTokenReply {
+  bool isValid = 10;
+
+  // 以下信息在token检查通过后返回
+  string uid = 20;      // 用户uid
+  string openId = 21;   // 用户openId
+  string appId = 22;    // token对应的登录请求的appId
+  string platform = 23;    // token对应的登录请求的设备平台(用于区分多终端登录)
+  string accountSource = 24;  // token对应的登录账户来源（一个用户同一时刻仅允许一个账户登录）
+  string accountName = 25;  // token对应的登录账户名（一个用户同一时刻仅允许一个账户登录）
+}
+
+message CheckTokenStreamRequest {
+  string grpcStreamId = 10;  // 流标识id,将原样返回
+  // 支持两种方式校验token，二者只能选其一，同时传入时优先检查openId
+  // 1. 通过uid+appId校验token
+  optional string uid = 20;
+  optional string appId = 21;    // 验签时，必须明确用户请求的应用，以便返回openId信息
+  // 2. 通过openId校验token
+  optional string openId = 22;
+
+  string token = 30;     // 待检查的用户登录凭证
+}
+
+message CheckTokenStreamReply {
+  string grpcStreamId = 10;  // 流标识id，原样返回
+  bool isValid = 20;
+
+  // 以下信息在token检查通过后返回
+  string uid = 30;      // 用户uid
+  string openId = 31;   // 用户openId
+  string appId = 32;    // token对应的登录请求的appId
+  string platform = 33;    // token对应的登录请求的设备平台(用于区分多终端登录)
+  string accountSource = 34;  // token对应的登录账户来源（一个用户同一时刻仅允许一个账户登录）
+  string accountName = 35;  // token对应的登录账户名（一个用户同一时刻仅允许一个账户登录）
+}
+
+message GetUserRequest {
+  // 用户身份标识，二者只能选其一，同时传入时优先采用openId
+  // 方式一：使用openId获取用户信息
+  optional string openId = 1;
+  // 方式二：使用userId+appId获取用户信息，传入字段不同可以获取不同层级信息
+  optional string uid = 2;  // tenantId默认使用COMPATIBLE-DEFAULT
+  optional string appId = 3;
+
+
+  // 选择返回的用户信息，按位控制信息类别，不传入或者传入为0时表示默认全部返回
+  // 0x1 - 用户基本信息
+  // 0x2 - 应用附加信息
+  // 0x4 - 用户对应的账户信息
+  // 0x8 - 用户对应的id信息，uid,openId
+  int32 infoSelector = 4;
+
+  // 是否将用户头像信息转换为obs链接,不传入时默认为true
+  // true - 返回的头像直接是obs链接，适用于直接向前端返回，链接有过期时间，不能用于直接存储
+  // false - 返回的头像是obs存储的key，适用于服务自行存储
+  optional bool convertObs = 5;
+}
+
+message CompoundInfoReply {
+  BasicInfoMsg basicInfo = 1;
+  // 应用自定义用户信息
+  message SpecificInfoMsg {
+    // 信息类别
+    string className = 1;
+    // 用户信息
+    google.protobuf.Struct infos = 2;
+  }
+  repeated SpecificInfoMsg specificInfos = 2;
+
+  message AccountInfoMsg { // 用户对应账号信息
+    string source = 1;            // 首次创建用户时的账号来源
+    string sourceId = 2;          // 账号Id
+  }
+  repeated AccountInfoMsg accountInfos = 3;   // 用户对应的账号信息
+  optional string uid = 4;   // 用户uid信息,在使用openId查询用户信息时返回
+  optional string openId = 5;   // 用户openId信息,在使用uid+appId查询用户信息时返回
+}
+
+message GetUserBatchRequest {
+  repeated string openIds = 1;
+  message AccessUser {
+    string uid = 1;
+    string appId = 2;
+  }
+  repeated  AccessUser users = 2;
+
+  // 选择返回的用户信息，按位控制信息类别，不传入或者传入为0时表示默认全部返回
+  // 0x1 - 用户基本信息
+  // 0x2 - 应用附加信息
+  // 0x4 - 用户对应的账户信息
+  // 0x8 - 用户对应的id信息，uid,openId
+  int32 infoSelector = 3;
+
+  // 是否将用户头像信息转换为obs链接,不传入时默认为true
+  // true - 返回的头像直接是obs链接，适用于直接向前端返回，链接有过期时间，不能用于直接存储
+  // false - 返回的头像是obs存储的key，适用于服务自行存储
+  optional bool convertObs = 4;
+}
+
+message CompoundInfoBatchReply {
+  repeated CompoundInfoReply users = 1;
+}
+
+
+// 查询用户列表
+message GetUserListRequest {
+  string appId = 1;
+  // 分页
+  optional int32 pageNum = 2;  // 页数，从1开始
+  optional int32 pageSize = 3; // 每页个数，不小于1
+  // 排序
+  optional string sortField = 4;  // 排序字段,不传入时默认为id
+  optional string sortDir = 5;    // 排序方向,只能为desc/asc,不传入时默认为asc
+  // 模糊查询
+  // 同时传入时查询优先级name>phone>email
+  optional string name = 6;
+  optional string phone = 7;
+  optional string email = 8;
+  // 过滤条件
+  optional string source = 9; // 过滤用户来源
+}
+
+message SketchyInfoPageReply {
+  message SketchyInfoMsg {
+    string openId = 1;
+    string avatarThumb = 2;
+    string name = 3;
+    string phone = 4;
+    string email = 5;
+  }
+
+  int32 pageNum = 1;
+  int32 pageSize = 2;
+  int32 totalPage = 3;
+  int64 total = 4;
+  repeated SketchyInfoMsg users = 5;
+}
+
+/*******************************************
+                用户管理接口数据模型
+ *******************************************/
+// 传入用户创建参数
+message CreateUserRequest {
+  string source = 2;  // 账号来源
+  string sourceId = 3;  // 账号id
+  BasicInfoMsg userInfo = 4;    // 用户信息
+  // 登录态数据
+  bool needToken = 20;     // 是否需要返回token，如果为false，以下字段不需传入
+  string appId = 1;   // 应用ID
+  string platform = 21;    // 用户登录使用的平台信息
+  string accountName = 22; // 用户登录的账号名
+}
+
+// 返回新建用户的uid
+message CreateUserReply {
+  string uid = 1;     // 用户id
+  bool isNew = 3;   // 是否是新创建用户（如果传入的创建用户参数已经有对应用户(同sourceId/同手机号/同邮箱)，将返回已有用户信息，并将此设置为false
+
+  // 以下字段仅在needToken=true时返回
+  string openId = 2;  // 与应用对应的openId
+  string accessToken = 20;  // 用户登录凭证
+}
+
+
+// 获取用户访问凭证
+message GetAccessTokenRequest {
+  string uid = 1;   // 用户id
+  string appId = 2;   // 应用id
+  bool override = 3;   // 是否使用传入的信息覆盖式更新现有用户基本信息，应仅第三方账户登录时设置为true
+  BasicInfoMsg userInfo = 4;    // 传入用户更新参数 - 其中的phone、email字段不允许直接更新，传入无效
+  // 登录态数据
+  string platform = 20;    // 用户登录使用的平台信息
+  string accountSource = 21; // 用户登录的账号来源
+  string accountName = 22; // 用户登录的账号名
+}
+
+// 更新用户（仅登录时使用）后返回用户openId
+message GetAccessTokenReply {
+  string openId = 1;  // 返回用户openId
+  string accessToken = 2;  // 用户登录凭证
+}
+
+message UpdateUserBasicRequest {
+  // 通过uid或openId定位用户,优先使用uid
+  string uid = 10;   // 用户id
+  string openId = 11;  // 用户oid
+
+  BasicInfoMsg userInfo = 20;    // 用户基本信息更新参数
+}
+
+// 传入用户uid
+message GetUserContactRequest {
+  string uid = 1; // 用户uid
+}
+
+message UserContactReply {
+  optional string phone = 1;
+  optional string email = 2;
+}
+
+// 注销用户访问凭证请求
+message C2S_RevokeAccessToken_Req {
+  string uid = 1;       // 登录用户uid
+  string platform = 2;  // 登录平台
+  string appId = 3;      // 登录应用
+}
+
+// 获取头像库请求结构
+message C2S_GetAvatars_Req {
+  optional bool includeDefault = 1;  // 是否包含默认头像库，不传入时默认为true
+
+  string appId = 10;  // 头像库隶属应用
+  optional string group = 11;  // 头像库隶属分组
+  optional string label = 12;  // 头像库隶属标签
+}
+
+// 获取头像库返回结构
+message S2C_GetAvatars_Rpn {
+  message AvatarInfo {
+    string id = 1;    // 头像id
+    string fileName = 2;    // 文件名
+    string downloadUrl = 3; // 头像访问链接
+  }
+  repeated AvatarInfo avatars = 1;
+}
+

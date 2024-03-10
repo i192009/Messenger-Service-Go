@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package platform;
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.platform.lib";
+option java_outer_classname = "PlatformServiceProto";
+option go_package = "./;services";
+
+service PlatformService{
+
+  rpc GetById (C2S_GetByIdReq_t) returns (C2S_GetByIdRpn_t){}
+
+  rpc Query (C2S_QueryReq_t) returns (C2S_QueryRpn_t) {}
+}
+
+// 调用者信息
+message InvokeUser {
+  string openId = 10; // 调用者的openid
+  string companyId = 20; // 调用者的企业id, 与企业无关的应用可以不传入
+  string appId = 30; // 调用的appId
+  string uid = 40; // 调用者的uid
+  string accountName = 50; // 调用者的账号名
+  string instanceId = 60; // 应用实例id
+  string instanceName = 70;// 应用实例名称
+  string unionId = 80; // 用户的unionId
+}
+
+message C2S_GetByIdReq_t {
+  string id = 10; // 项目/文件夹/应用文件的id
+  bool retContainAuthPoint = 20; // 是否返回权限点
+  int32 convertIdFlag = 30; // 转换id的标志位, 1:转换owner, 2:转换createdBy, 4: 转换updatedBy, 同时转换多个时, 将值相加即可
+  bool convertThumbnail = 40; // 是否将缩略图转换为可下载的url
+  InvokeUser invokeUserInfo = 50;
+  optional bool checkAuth = 60; // 是否检查权限, 如果该值为true, invokeUserInfo必传, 且只会返回invokeUserInfo中用户有权限看到的数据
+}
+
+message C2S_GetByIdRpn_t {
+  string id = 1; //
+  string rootId = 3; // 根节点id
+  string parentId = 5; // 父节点id
+  int32 status = 7; // 状态, 默认:0, 已删除:1
+  ProjectDataTypeEnum type = 9; // 类型:PROJECT/FILE/FOLDER/APP_FILE
+  string fileKey = 11; // 文件key,对应文件存储系统的文件路径
+  string name = 13; // 名称
+  string remark = 15; // 描述
+  int32 isShare = 17; // 是否分享:1:是,0:否
+  ProjectShareTypeEnum shareType = 19; // INSIDE_READ/INSIDE_WRITE/OUTSIDE_READ/OUTSIDE_WRITE
+  int64 size = 21; // 文件大小,type是FILE时有效
+  string owner = 23; // 拥有者
+  string ownerOid = 25; // created_by_oid
+  string ownerUnionId = 27; // created_by_union_id
+  string version = 29; // 版本
+  string companyId = 31; // 企业id
+  string idPath = 33; // 从根节点到当前节点的id路径
+  string namePath = 35; // 从根节点到当前节点的name路径
+  string thumbnail = 37; // 缩略图
+  string jobId = 39; // appFile关联的任务id
+  int32 jobStatus = 41; // appFile关联的任务状态
+  string appId = 43; // app_id
+  string instanceId = 45; // 应用实例id, 类型为APP_FILE时有效
+  string instanceName = 47; // 应用实例名称, 类型为APP_FILE时有效
+  string structureNodeId = 49; // 对应structure系统中的nodeId
+  string createdBy = 51; // 创建人
+  string createdByOid = 53; // created_by_oid
+  string createdByUnionId = 55; // created_by_union_id
+  int64 createTime = 57; // 创建时间
+  string updatedBy = 59; // 更新人
+  string updatedByOid = 61; // updated_by_oid
+  string updatedByUnionId = 63; // updated_by_union_id
+  int64 updateTime = 65; // 更新时间
+  repeated string authPointList = 67; // 权限点集合
+  OrganizationUser ownerDetailInfo = 69; // 拥有者信息
+  OrganizationUser createdUserDetailInfo = 71; // 创建者信息
+  OrganizationUser updatedUserDetailInfo = 73; // 更新者信息
+}
+
+enum ProjectDataTypeEnum {
+  PROJECT = 0; //
+  FILE = 10; //
+  FOLDER = 20; //
+  APP_FILE = 30; //
+}
+
+enum ProjectShareTypeEnum {
+
+  NULL_ProjectShareType = 0;//
+  INSIDE_READ = 10; //
+  INSIDE_WRITE = 20; //
+  OUTSIDE_READ = 30; //
+  OUTSIDE_WRITE = 40; //
+}
+
+message OrganizationUser {
+  string name = 10; //
+  string enName = 20; //
+  string avatar = 30; //
+  string avatarBig = 40; //
+  string avatarMiddle = 50; //
+  string avatarThumb = 60; //
+  string email = 70; //
+  string phone = 80; //
+  string zixelUserId = 90; //
+}
+
+message C2S_QueryReq_t {
+  querySearchEntity entity = 10; // 查询用到的实体
+  int32 page = 20; // 页码
+  int32 size = 30; // 每页数量(不能为空)
+  optional int32 skip = 70; // 跳过的条数, 不能与page同时为空, 存在skip时, page失效
+  repeated order orders = 40; // 排序
+  optional InvokeUser invokeUserInfo = 50; // 调用者信息
+  bool checkAuth = 60; // 是否检查权限, 如果该值为true, invokeUserInfo必传, 且只会返回invokeUserInfo中用户有权限看到的数据
+}
+
+message C2S_QueryRpn_t {
+  int64 pages = 10; // 第几页
+  int64 size = 20; // 没有多少条
+  int64 total = 30; // 总记录数
+  repeated C2S_GetByIdRpn_t records = 40;
+}
+
+message order {
+  string column = 10; //
+  bool asc = 20; //
+}
+
+message querySearchEntity {
+  optional string type = 5; // 类型:PROJECT/FILE/FOLDER/APP_FILE
+  optional string name = 10; // 名称, 模糊匹配
+  optional int32 isShare = 15; // 是否分享:1:是,0:否
+  optional string shareType = 20; // INSIDE_READ/INSIDE_WRITE/OUTSIDE_READ/OUTSIDE_WRITE
+  string companyId = 25; // 企业id
+  optional string idPath = 30; // 从根节点到当前节点的id路径
+  optional string namePath = 35; // 从根节点到当前节点的name路径
+  optional string appId = 40; // app_id
+  optional string instanceId = 45; // 应用实例id, 类型为APP_FILE时有效
+  optional string instanceName = 50; // 应用实例名称, 类型为APP_FILE时有效
+  optional string ownershipType = 55; // 所属关系,ALL/MINE/SHARE_TO_ME
+  optional string searchDataType = 60; // PROJECT/FILE/FOLDER/APP_FILE
+  optional int32 convertIdFlag = 65; // 转换id的标志位, 1:转换owner, 2:转换createdBy, 4: 转换updatedBy
+  optional bool convertThumbnail = 70; // 是否转换缩略图为可显示的url
+  optional string parentId = 80; // 父级id
+}

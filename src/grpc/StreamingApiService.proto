@@ -1,0 +1,173 @@
+syntax = "proto3";
+package streaming;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.streaming.lib";
+option java_outer_classname = "StreamingApiServiceProto";
+option go_package = "./;services";
+
+// 节点相关服务
+service StreamingApiNodeService {
+  // 节点容量查询
+  rpc Capacity(google.protobuf.Value) returns (google.protobuf.Value) {}
+  // 节点离线
+  rpc Offline(google.protobuf.Value) returns (google.protobuf.Empty) {}
+  // 初始化回调
+  rpc InitCallback(InitNotice) returns (google.protobuf.Empty) {}
+  // 状态回调
+  rpc StatusCallback(StatusNotice) returns (google.protobuf.Empty) {}
+}
+
+message InitNotice {
+  string nodeCode = 1;
+  repeated string instanceId = 2;
+}
+
+message StatusNotice {
+  string nodeCode = 1;
+  repeated Instance instances = 2;
+}
+
+message Instance {
+  string instanceId = 1;
+  int64 timestamp = 2;
+  optional string taskId = 3;
+  optional string playUuid = 4;
+  optional bool bind = 5;
+}
+
+service StreamingApiAppService {
+    rpc startCallback(StartNotice) returns (google.protobuf.Empty) {}
+
+    rpc readyCallback(ReadyNotice) returns (google.protobuf.Empty) {}
+
+    rpc bindCallback(AppNotice) returns (google.protobuf.Empty) {}
+
+    rpc unbindCallback(AppNotice) returns (google.protobuf.Empty) {}
+
+    rpc stopCallback(AppNotice) returns (google.protobuf.Empty) {}
+}
+
+message StartNotice {
+  bool success = 1;
+  string taskId = 2;
+  string nodeCode = 3;
+  string instanceId = 4;
+  string message = 5;
+}
+
+
+message AppNotice {
+  string taskId = 1;
+  string nodeCode = 2;
+  string instanceId = 3;
+}
+
+message ReadyNotice {
+  string taskId = 1;
+  string nodeCode = 2;
+  string instanceId = 3;
+  string playUuid = 4;
+}
+
+
+// 分组相关服务
+service StreamingApiGroupService {
+  // 分页查询分组
+  rpc QueryGroupPage(QueryGroupPageReq) returns (QueryGroupPageRpn){}
+  // 查询分组详情
+  rpc QueryGroupById(QueryGroupByIdReq) returns (StreamingGroupInfo){}
+  // 修改镜像
+  rpc UpdateImage(UpdateImageReq) returns (google.protobuf.Empty) {}
+  // 修改会话断连保留时长
+  rpc UpdateSessionTimeout(UpdateSessionTimeoutReq) returns (google.protobuf.Empty) {}
+  // 修改节点类型
+  rpc UpdateNodeType(UpdateNodeTypeReq) returns (google.protobuf.Empty) {}
+  // 修改并发会话数
+  rpc UpdateNodeCapacity(UpdateNodeCapacityReq) returns (google.protobuf.Empty) {}
+  // 修改弹性策略
+  rpc UpdateStrategy(UpdateStrategyReq) returns (google.protobuf.Empty) {}
+}
+
+message QueryGroupPageReq {
+  int64 pageNo = 1;
+  int64 pageSize = 2;
+  optional string platform = 3;
+  optional string search = 20;
+}
+
+message QueryGroupByIdReq {
+  string id = 1;
+}
+
+message QueryGroupPageRpn {
+  int64 total = 1;
+  repeated StreamingGroupBase list = 2;
+}
+
+message StreamingGroupBase {
+  string id = 10;
+  string groupName = 20;
+  string platform = 30;
+  string bizRegionId = 40;
+  optional string imageId = 50;
+  optional string createTime = 60;
+  optional string modifyTime = 61;
+}
+
+message StreamingGroupInfo {
+  string id = 10;
+  string groupName = 20;
+  string platform = 30;
+  string bizRegionId = 40;
+  int32 sessionTimeout = 60;
+  optional string imageId = 50;
+  optional string securityGroupIds = 70;
+  optional string subnetId = 71;
+  optional string keyName = 72;
+  optional string nodePlatform = 80;
+  optional string nodeType = 81;
+  optional int32  nodeCapacity = 90;
+  optional string strategyType = 100;
+  optional int32 nodeAmount = 101;
+  optional int32 maxScalingAmount = 102;
+  optional int32 scalingStep = 103;
+  optional int32 scalingUsageThreshold = 104;
+  optional int32 scalingDownAfterIdleMinutes = 105;
+  optional string createTime = 120;
+  optional string modifyTime = 121;
+}
+
+message UpdateSessionTimeoutReq {
+  string id = 10;
+  int32 sessionTimeout = 20;
+}
+
+message UpdateImageReq {
+  string id = 10;
+  string imageId = 20;
+}
+
+message UpdateNodeTypeReq {
+  string id = 10;
+  string nodePlatform = 20;
+  string nodeType = 21;
+}
+
+message UpdateNodeCapacityReq {
+  string id = 10;
+  int32 nodeCapacity = 20;
+};
+
+message UpdateStrategyReq {
+  string id = 1;
+  string strategyType = 10;
+  int32 nodeAmount = 20;
+  optional int32 maxScalingAmount = 30;
+  optional int32 scalingStep = 40;
+  optional int32 scalingUsageThreshold = 50;
+  optional int32 scalingDownAfterIdleMinutes = 60;
+};

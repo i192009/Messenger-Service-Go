@@ -1,0 +1,183 @@
+syntax = "proto3";
+package transformService;
+import "google/protobuf/struct.proto";
+
+option go_package = "./;services";
+
+service TransformServer {
+  //创建任务
+  rpc NewTask(C2S_NewTaskReq_t) returns (C2S_NewTaskRpn_t) {}
+  //获取任务详情
+  rpc GetTaskInfo(C2S_GetTaskInfoReq_t) returns (C2S_GetTaskInfoRpn_t) {}
+  //获取文件上传链接
+  rpc GetUploadUrl(C2S_GetUploadUrlReq_t) returns (C2S_GetUploadUrlRpn_t) {}
+  //获取文件下载链接
+  rpc GetDownloadUrl(C2S_GetDownloadUrlReq_t) returns (C2S_GetDownloadUrlRpn_t) {}
+  //查询某用户某个时间段内任务数
+  rpc QueryTaskCount(C2S_QueryTaskCountReq_t) returns (C2S_QueryTaskCountRpn_t) {}
+
+  rpc QueryScripts(C2S_QueryScriptsReq) returns (C2S_QueryScriptsRpn) {}
+  rpc SetScripts(C2S_SetScriptsReq) returns (C2S_SetScriptsRpn) {}
+  rpc DeleteScripts(C2S_DeleteScriptsReq) returns (C2S_DeleteScriptsRpn) {}
+}
+
+message C2S_NewTaskReq_t {
+  optional string  userId = 10;
+  optional string  instanceId = 20;
+  optional string  appId = 30;
+  optional  string  tenantId = 40;
+  int32 serviceType = 50;
+  string  bucketDownload = 60;
+  string  bucketUpload = 70;
+  //marks 数组
+  repeated string  marks = 80;
+  //用户单位到毫米的转化系数，比如用户的模型单位是“米”，这个地方就填上1000.
+  repeated fixed64 Scale = 85;
+  //如果结果为glb 需不需要Draco 压缩,上传的时候再处理
+  bool glbDraco = 86;
+  //scripts 数组
+  repeated Pipeline  pipelines = 90;
+  optional JobMqInfo  jobMqInfos = 100;
+  repeated FolderConfig  folderConfig = 110;
+  repeated TargetFormat  targetFormats = 120;
+}
+message Pipeline {
+  int32  useScripts = 10;
+  int32  processType = 20;
+}
+message JobMqInfo {
+  string  send_rate_type = 10;
+  string  mq_tag = 20;
+}
+
+message FolderConfig {
+  map<string,google.protobuf.Struct>  p = 10;
+  bool transform = 20;
+  int64  fileSize = 30;
+  string name = 40;
+  string  remoteUrl = 50;
+  map<string, string> targetUrl = 60;
+}
+
+message TargetFormat {
+  string  name = 20;
+  repeated  int32 pipe = 30;
+  string tag = 40;
+  google.protobuf.Struct  parms = 50;
+}
+
+message C2S_NewTaskRpn_t {
+  int32 code = 10;
+  string msg = 20;
+  string jobId = 30;
+}
+
+message C2S_QueryScriptsReq {
+  int32 page = 10;
+  int32  size = 20;
+  string  code = 30;
+}
+message C2S_QueryScriptsRpn {
+  int32 code = 10;
+  string msg = 20;
+  repeated  ScriptsData data = 30;
+}
+
+message C2S_GetTaskInfoReq_t {
+  optional string  userId = 10;
+  optional string  instanceId = 20;
+  optional string  appId = 30;
+  optional  string  tenantId = 40;
+  string  jobId = 50;
+}
+message C2S_GetTaskInfoRpn_t {
+  int32 code = 10;
+  string msg = 20;
+  TaskInfo data = 30;
+}
+
+message TaskInfo {
+  string jobId = 10;
+  int64  status = 20;
+  int64  processed = 25;
+  int64  process = 30;
+  map<string,google.protobuf.Struct>  fileMaps = 50;
+  google.protobuf.Struct  result = 60;
+}
+
+message C2S_GetUploadUrlReq_t {
+  optional string  userId = 10;
+  optional string  instanceId = 20;
+  optional string  appId = 30;
+  optional  string  tenantId = 40;
+  int64  fileSize = 50;
+  string  fileName = 60;
+  string  key = 70;
+}
+message C2S_GetUploadUrlRpn_t {
+  int32 code = 10;
+  string msg = 20;
+  string fileUrl = 30;
+  string key = 40;
+}
+message C2S_GetDownloadUrlReq_t {
+  optional string  userId = 10;
+  optional string  instanceId = 20;
+  optional string  appId = 30;
+  optional  string  tenantId = 40;
+  string  key = 50;
+}
+message C2S_GetDownloadUrlRpn_t {
+  int32 code = 10;
+  string msg = 20;
+  string fileUrl = 30;
+}
+message C2S_QueryTaskCountReq_t {
+  optional string  userId = 10;
+  optional string  instanceId = 20;
+  optional string  appId = 30;
+  optional  string  tenantId = 40;
+  string  startTime = 50;
+  string  endTime = 60;
+  optional bool isReturnList = 70;
+}
+message C2S_QueryTaskCountRpn_t {
+  int32 code = 10;
+  string msg = 20;
+  int64 taskNum = 30;
+  int64 successNum = 40;
+  int64 failNum = 50;
+  int64 others = 60;
+  repeated TaskInfo taskInfos = 70;
+}
+//////
+message C2S_SetScriptsReq {
+  ScriptsData data = 10;
+}
+message C2S_SetScriptsRpn {
+  int32 code = 10;
+  string msg = 20;
+}
+message C2S_DeleteScriptsReq {
+  string code = 10;
+}
+message C2S_DeleteScriptsRpn {
+  int32 code = 10;
+  string msg = 20;
+}
+message ScriptsData {
+  string  code = 10;
+  string describe = 20;
+  string data = 30;
+  repeated  FuncData funcs = 40;
+}
+message FuncData {
+  string  name = 10;
+  repeated  ParamData  params = 20;
+}
+message ParamData {
+  string  default = 10;
+  string vauleType = 20;
+  bool  isRequired = 30;
+  repeated string  vauleRange = 40;
+}

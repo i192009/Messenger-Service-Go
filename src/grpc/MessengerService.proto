@@ -1,0 +1,560 @@
+syntax = "proto3";
+
+package proto;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "./;services";
+
+service ConfigurationService {
+  rpc CreateConfiguration(CreateConfigurationRequest) returns (Configuration);
+  rpc UpdateConfiguration(UpdateConfigurationRequest) returns (Configuration);
+  rpc DeleteConfiguration(DeleteConfigurationRequest) returns (DeleteConfigurationResponse);
+  rpc QueryConfigurations(QueryConfigurationRequest) returns (QueryConfigurationResponse);
+  rpc GetConfiguration(GetConfigurationRequest) returns (Configuration);
+}
+
+service TemplateService {
+  rpc CreateTemplate(CreateTemplateRequest) returns (Template);
+  rpc UpdateTemplate(UpdateTemplateRequest) returns (Template);
+  rpc DeleteTemplate(DeleteTemplateRequest) returns (DeleteTemplateResponse);
+  rpc QueryTemplates(QueryTemplatesRequest) returns (QueryTemplatesResponse);
+  rpc GetTemplate(GetTemplateRequest) returns (Template);
+}
+service SceneService {
+  rpc CreateScene(C2S_CreateSceneRequest) returns (Scene);
+  rpc UpdateScene(C2S_UpdateSceneRequest) returns (Scene);
+  rpc DeleteScene(C2s_DeleteSceneRequest) returns (S2C_DeleteSceneResponse);
+  rpc QueryScenes(C2s_QuerySceneRequest) returns (S2c_QuerySceneResponse);
+  rpc GetScene(C2S_GetSceneRequest) returns (Scene);
+}
+service SceneRelationService {
+  rpc CreateSceneRelation(C2s_CreateSceneRelationRequest) returns (SceneRelation);
+  rpc UpdateSceneRelation(C2s_UpdateSceneRelationRequest) returns (SceneRelation);
+  rpc DeleteSceneRelation(C2s_DeleteSceneRelationRequest) returns (S2C_DeleteSceneRelationResponse);
+  rpc QuerySceneRelations(C2s_QuerySceneRelationRequest) returns (S2c_QuerySceneRelationResponse);
+  rpc GetSceneRelation(C2s_GetSceneRelationRequest) returns (SceneRelation);
+  rpc CopySceneRelation(C2s_CopySceneRelationRequest) returns (S2c_CopySceneRelationResponse);//copy all related data into new appid
+}
+service MessageService {
+  rpc SendMessage(SendMessageRequest) returns (Message);
+  rpc SendMessageV2(C2S_SendMessageV2Req_t) returns (S2C_SendMessageV2Rpn_t);
+  rpc SendMessageByScene(C2S_SendMessageBySceneReq_t) returns (S2C_SendMessageBySceneRpn_t);
+  rpc UpdateMessageStatus(UpdateMessageRequest) returns (Message);
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse);
+  rpc QueryMessages(QueryMessagesRequest) returns (QueryMessagesResponse);
+  rpc GetMessage(GetMessagesRequest) returns (QueryMessagesResponse);
+}
+
+message ErrorResponse {
+  Error error = 1;
+}
+
+message Error {
+  int64 code = 1;
+  string message = 2;
+  Service service = 3;
+  google.protobuf.Struct args = 4;
+}
+
+message Service {
+  string name = 1;
+  string uuid = 2;
+}
+message C2s_QuerySceneRequest {
+  optional string id = 1;
+  optional string name = 2;
+  string appId = 3;
+  string instanceId = 4;
+  string tenantId = 5;
+  optional int64 categoryId = 6;
+  int64 page = 7;
+  int64 limit = 8;
+}
+message C2s_CopySceneRelationRequest {
+  string oldAppId = 1;
+  string newAppId = 2;
+  bool forceUpdate = 3;
+}
+message S2c_CopySceneRelationResponse{
+  bool result = 1;
+}
+message C2S_CreateSceneRequest {
+  string name = 1;
+  string describe = 2;
+  repeated string supportArgs = 3;
+  string appId = 4;
+  string instanceId = 5;
+  string tenantId = 6;
+  int64 categoryId = 7;
+  string createdBy = 8;
+}
+message C2S_UpdateSceneRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string describe = 3;
+  repeated string supportArgs = 4;
+  string appId = 5;
+  string instanceId = 6;
+  string tenantId = 7;
+  optional int64 categoryId = 8;
+  string updateBy = 9;
+}
+message C2S_GetSceneRequest {
+  string id = 1;
+}
+message C2s_DeleteSceneRequest {
+  string id = 1;
+}
+message S2c_QuerySceneResponse {
+  int64 page = 1;
+  int64 limit = 2;
+  int64 total = 3;
+  repeated Scene records = 4;
+}
+message S2C_DeleteSceneResponse {
+  string message = 1;
+}
+message C2s_QuerySceneRelationRequest {
+  optional string sceneId = 1;
+  optional string templateId = 2;
+  optional string configId = 3;
+  optional string configSubId = 4;
+  string appId = 5;
+  string instanceId = 6;
+  string tenantId = 7;
+  int64 page = 9;
+  int64 limit = 10;
+}
+message C2s_CreateSceneRelationRequest {
+  string sceneId = 1;
+  string templateId = 2;
+  string configId = 3;
+  string configSubId = 4;
+  string source = 5;
+  repeated string target= 6;
+  CustomEmailRequest customEmailRequest = 7;
+  CustomSmsRequest customSmsRequest = 8;
+  CustomFeishuRequest customFeishuRequest = 9;
+  CustomDingTalkRequest customDingTalkRequest = 10;
+  string appId = 11;
+  string instanceId = 12;
+  string tenantId = 13;
+  string createdBy = 14;
+}
+message C2s_UpdateSceneRelationRequest {
+  string sceneId = 1;
+  optional string templateId = 2;
+  optional string configId = 3;
+  optional string configSubId = 4;
+  optional string source = 5;
+  repeated string target= 6;
+  CustomEmailRequest customEmailRequest = 7;
+  CustomSmsRequest customSmsRequest = 8;
+  CustomFeishuRequest customFeishuRequest = 9;
+  CustomDingTalkRequest customDingTalkRequest = 10;
+  string appId = 11;
+  string instanceId = 12;
+  string tenantId = 13;
+  string updateBy = 14;
+}
+message C2s_GetSceneRelationRequest {
+  string sceneId = 1;
+  string appId = 2;
+}
+message C2s_DeleteSceneRelationRequest {
+  string sceneId = 1;
+  string appId = 2;
+}
+message S2c_QuerySceneRelationResponse {
+  int64 page = 1;
+  int64 limit = 2;
+  int64 total = 3;
+  repeated SceneRelation records = 4;
+}
+message S2C_DeleteSceneRelationResponse {
+  string message = 1;
+}
+message Scene {
+  string id = 1;
+  string name = 2;
+  string describe = 3;
+  repeated string supportArgs = 4;
+  string appId = 5;
+  string instanceId = 6;
+  string tenantId = 7;
+  int64 categoryId = 8;
+  string createdBy = 9;
+  string updateBy = 10;
+  string createdAt = 11;
+  string updatedAt = 12;
+}
+message SceneRelation {
+  string sceneId = 2;
+  string templateId = 3;
+  string configId = 4;
+  string configSubId = 5;
+  string source = 6;
+  repeated string target= 7;
+  CustomEmailRequest customEmailRequest = 8;
+  CustomSmsRequest customSmsRequest = 9;
+  CustomFeishuRequest customFeishuRequest = 10;
+  CustomDingTalkRequest customDingTalkRequest = 11;
+  string appId = 12;
+  string instanceId = 13;
+  string tenantId = 14;
+  string createdBy = 15;
+  string updateBy = 16;
+  string createdAt = 17;
+  string updatedAt = 18;
+}
+message Configuration{
+  string id = 1;
+  string classId = 2;
+  string parentId = 3;
+  string appId = 4;
+  string name = 5;
+  bool persist = 6;
+  repeated string states = 7;
+  string type = 8;
+  string mode = 9;
+  string createdAt = 10;
+  string updatedAt = 11;
+  Policy statusCallback = 12;
+  repeated Action actions = 13;
+  CustomSmsConfiguration customSmsConfiguration = 14;
+  CustomEmailConfiguration customEmailConfiguration = 15;
+  CustomFeishuConfiguration customFeishuConfiguration = 16;
+  CustomDingTalkConfiguration customDingTalkConfiguration = 17;
+}
+
+message Template{
+  string id = 1;
+  string messageTemplateId = 2;
+  string name = 3;
+  string type = 4;
+  string content = 5;
+  string createdBy = 6;
+  string language = 7;
+  string createdAt = 8;
+  string updatedAt = 9;
+  repeated string params = 10;
+  string appId = 11;
+}
+
+message Message {
+  string id = 1;
+  string linkageId = 2;
+  string appId = 3;
+  string openId = 4;
+  string classId = 5;
+  string subclassId = 6;
+  string messageTemplateId = 7;
+  string content = 8;
+  string source = 9;
+  string status = 10;
+  repeated string target= 11;
+  google.protobuf.Struct statusSync = 12;
+  string createdAt = 13;
+  string updatedAt = 14;
+  repeated MessageAction actions = 15;
+}
+
+message Policy {
+  string kafka = 1;
+  string http = 2;
+}
+
+message Action {
+  string name = 1;
+  string tips = 2;
+  ActionTrigger action = 3;
+  string nextAction = 4;
+}
+
+message ActionTrigger {
+  string type = 1;
+  string url = 2;
+  string method = 3;
+  google.protobuf.Struct query = 4;
+  google.protobuf.Struct body = 5;
+}
+
+message CreateConfigurationRequest {
+  string classId = 1;
+  string parentId = 2;
+  string appId = 3;
+  string name = 4;
+  bool persist = 5;
+  repeated string states = 6;
+  string type = 7;
+  string mode = 8; // push , pull , email  sms, feishu
+  Policy statusCallback = 9;
+  repeated Action actions = 10;
+  CustomSmsConfiguration customSmsConfiguration = 11;
+  CustomEmailConfiguration customEmailConfiguration = 12;
+  CustomFeishuConfiguration customFeishuConfiguration = 13;
+  CustomDingTalkConfiguration customDingTalkConfiguration = 14;
+}
+
+message UpdateConfigurationRequest {
+  string classId = 1;
+  string parentId = 2;
+  string appId = 3;
+  string name = 4;
+  bool persist = 5;
+  repeated string states = 6;
+  string type = 7;
+  string mode = 8;
+  Policy statusCallback = 9;
+  repeated Action actions = 10;
+  CustomSmsConfiguration customSmsConfiguration = 11;
+  CustomEmailConfiguration customEmailConfiguration = 12;
+  CustomFeishuConfiguration customFeishuConfiguration = 13;
+  CustomDingTalkConfiguration customDingTalkConfiguration = 14;
+}
+
+message DeleteConfigurationRequest {
+  string id = 1;
+}
+
+message DeleteConfigurationResponse {
+  string message = 1;
+}
+
+message GetConfigurationRequest {
+  string id = 1;
+}
+
+message QueryConfigurationRequest {
+  string name = 1;
+  string type = 2;
+  string mode = 3;
+  string parentId = 4;
+  string appId = 5;
+  int64 page = 6;
+  int64 limit = 7;
+  string order = 8;
+  string sort = 9;
+}
+
+message QueryConfigurationResponse {
+  int64 page = 1;
+  int64 limit = 2;
+  int64 total = 3;
+  repeated Configuration results = 4;
+}
+
+
+message CreateTemplateRequest {
+  string messageTemplateId = 1;
+  string name = 2;
+  string type = 3;
+  string content = 4;
+  repeated string params = 7;
+  string createdBy = 5;
+  string language = 6;
+  string appId = 8;
+}
+
+message UpdateTemplateRequest {
+  string messageTemplateId = 1;
+  string name = 2;
+  string type = 3;
+  string content = 4;
+  string createdBy = 5;
+  string language = 6;
+  repeated string params = 7;
+  string appId = 8;
+}
+
+message DeleteTemplateRequest {
+  string id = 1;
+}
+
+message DeleteTemplateResponse {
+  string message = 1;
+}
+
+message GetTemplateRequest {
+  string id = 1;
+}
+
+message QueryTemplatesRequest {
+  string name = 1;
+  string type = 2;
+  string createdBy = 3;
+  string language = 4;
+  int64 page = 5;
+  int64 limit = 6;
+  string order = 7;
+  string sort = 8;
+  string appId = 9;
+}
+
+message QueryTemplatesResponse {
+  int64 page = 1;
+  int64 limit = 2;
+  int64 total = 3;
+  repeated Template results = 4;
+}
+
+
+message MessageAction {
+  string name = 1;
+  string tips = 2;
+  MessageActionTrigger action = 3;
+  string nextAction = 4;
+}
+
+message MessageActionTrigger {
+  string type = 1;
+  string url = 2;
+  string method = 3;
+  google.protobuf.Struct query = 4;
+  google.protobuf.Struct body = 5;
+}
+message CustomEmailConfiguration {
+  string emailAccount = 1;
+  string emailPassword = 2;
+}
+
+message CustomFeishuConfiguration {
+  string appId = 1;
+  string appSecret = 2;
+}
+
+message CustomSmsConfiguration {
+  Huawei huawei = 1;
+}
+
+message Huawei {
+  string sender = 1;
+  string signature = 2;
+  string templateId = 3;
+}
+
+message CustomDingTalkConfiguration {
+  string suiteId = 1;
+  string appId = 2;
+  string miniAppId = 3;
+  string suiteKey = 4;
+  string suiteSecret = 5;
+  string TemplateId = 6;
+  string agentId = 7;
+}
+
+message SendMessageRequest {
+  string appId = 1;
+  string openId = 2;
+  string classId = 3;
+  string subclassId = 4;
+  optional string messageTemplateId = 5;
+  repeated string params = 13;
+  string content = 6;
+  string source = 7;
+  repeated string target= 8;
+  optional CustomEmailRequest customEmailRequest = 9;
+  optional CustomSmsRequest customSmsRequest = 10;
+  optional CustomFeishuRequest customFeishuRequest = 11;
+  optional CustomDingTalkRequest customDingTalkRequest = 12;
+}
+
+message C2S_SendMessageV2Req_t {
+  string classId = 10;
+  optional string messageTemplateId = 20;
+  repeated string params = 30;
+  optional string content = 40;
+  string source = 50;
+  repeated string target= 60; // Must be phone_number, email or openId
+  optional CustomEmailRequest customEmailRequest = 70;
+  optional CustomSmsRequest customSmsRequest = 80;
+  optional CustomFeishuRequestV2 customFeishuRequest = 90;
+}
+
+message C2S_SendMessageBySceneReq_t {
+  string sceneId = 10;
+  repeated string arguments= 20;
+  string appId = 30;
+  string instanceId = 40;
+  string tenantId = 50;
+}
+message S2C_SendMessageV2Rpn_t {
+  string messageId = 10;
+  string message = 20;
+  repeated string failedTargets = 30;
+  bool success = 40;
+}
+
+message S2C_SendMessageBySceneRpn_t {
+  string messageId = 10;
+  string message = 20;
+  repeated string failedTargets = 30;
+  bool success = 40;
+}
+message CustomEmailRequest {
+  string subject = 1;
+  string bodyType = 2;
+  repeated string cc = 3;
+  repeated string bcc = 4;
+  repeated string attachments = 5;
+}
+
+message CustomSmsRequest {
+  repeated string templateParams = 1;
+}
+
+message CustomFeishuRequest {
+  string receive_id_type = 1; // open_id, user_id, union_id, email, chat_id
+  string msg_type = 2; // text
+  string companyId = 3; // companyId
+}
+
+message CustomFeishuRequestV2 {
+  string msg_type = 1; // feishu msg types.
+}
+
+message CustomDingTalkRequest {
+  string companyId = 1;
+}
+
+message UpdateMessageRequest {
+  string id = 1;
+  string status = 2;
+  string openId = 3;
+}
+
+message DeleteMessageRequest {
+  string id = 1;
+  string openId = 2;
+}
+
+message DeleteMessageResponse {
+  string message = 1;
+}
+
+message QueryMessagesRequest {
+  string appId = 1;
+  string openId = 2;
+  string classId = 3;
+  string subclassId = 4;
+  string status = 5;
+  int64 page = 6;
+  int64 limit = 7;
+  string order = 8;
+  string sort = 9;
+  string classIds = 10; // Seperate classIds by commas like C1,C2,C3
+  string subclassIds = 11; // Seperate subclassIds by commas like SC1,SC2,SC3
+  string source = 12;
+}
+
+message QueryMessagesResponse {
+  int64 page = 1;
+  int64 limit = 2;
+  int64 total = 3;
+  repeated Message results = 4;
+}
+
+message GetMessagesRequest {
+  string openId = 1;
+}

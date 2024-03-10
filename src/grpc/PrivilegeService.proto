@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package privilege;
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.privilege.lib";
+option java_outer_classname = "PrivilegeServiceProto";
+option go_package = "./;services";
+
+/*******************************************
+                角色管理接口
+ *******************************************/
+// 角色管理
+service RoleService {
+  // 增加角色权限
+  rpc AddPrivileges(RoleModifyRequest) returns (google.protobuf.Empty) {}
+  // 移除角色权限
+  rpc RemovePrivileges(RoleModifyRequest) returns (google.protobuf.Empty) {}
+  // 查询角色权限
+  rpc GetRolePrivileges(GetRolePrivilegeRequest) returns (RolePrivilegesReply) {}
+}
+
+// 角色权限点修改参数
+message RoleModifyRequest {
+  // 隶属app
+  string appId = 1;
+  // 角色名称
+  string roleName = 2;
+  // 权限点match字段集合
+  repeated string privileges = 3;
+}
+
+// 角色权限点查询参数
+message GetRolePrivilegeRequest {
+  // 隶属app
+  string appId = 1;
+  // 角色名称
+  string roleName = 2;
+}
+
+
+// 角色权限点修改参数
+message RolePrivilegesReply {
+  // 权限点match字段集合
+  repeated string privileges = 1;
+}
+
+
+
+/*******************************************
+                授权关系管理接口
+ *******************************************/
+
+// 授权管理
+service AuthorizationService {
+  // 增加授权用户
+  rpc AddAuthorizationUsers(AuthorizationRequest) returns (EmptyReply) {}
+  // 删除授权用户
+  rpc RemoveAuthorizationUsers(AuthorizationRequest) returns (EmptyReply) {}
+  // 删除资源在角色上的授权关系
+  rpc DeleteAuthorization(AuthorizationDeleteRequest) returns (EmptyReply) {}
+  // 全量设置授权关系
+  rpc SetAuthorization(AuthorizationRequest) returns (EmptyReply) {}
+  // 删除资源
+  rpc DeleteResources(ResourceDeleteRequest) returns (ResourceDeleteReply) {}
+
+  // todo rpc checkAuthorization(AuthenticationCheckRequest) returns (CheckResultReply) {}
+
+  // 获取授权资源
+  rpc GetAuthorizedResource (AuthorizedResourceQueryRequest) returns (AuthorizedResourceReply) {}
+  // 获取授权数据
+  rpc GetAuthorizedPrivilege (AuthorizedPrivilegeQueryRequest) returns (AuthorizedPrivilegeReply) {}
+  // 获取授权数据
+  rpc GetAuthorizedUser (AuthorizedUserQueryRequest) returns (AuthorizedUserReply) {}
+}
+
+// 授权关系修改参数（设置、新增用户、移除用户共用）
+message AuthorizationRequest {
+  // 隶属app
+  string appId = 1;
+  // 资源路径
+  string path = 2;
+  // 角色名称
+  string roleName = 3;
+  // 用户uid集合
+  repeated string users = 4;
+}
+
+// 授权关系删除参数
+message AuthorizationDeleteRequest {
+  // 隶属app
+  string appId = 1;
+  // 资源路径
+  string path = 2;
+  // 角色名称
+  string roleName = 3;
+}
+
+message EmptyReply {
+}
+
+// 资源删除参数
+message ResourceDeleteRequest {
+  // 隶属app
+  string appId = 1;
+  // 资源路径
+  repeated string paths = 2;
+}
+
+message ResourceDeleteReply {
+  int32 count = 1;
+}
+
+// 查询用户拥有权限的资源集合
+message AuthorizedResourceQueryRequest {
+  string appId = 1; // 应用ID
+  string uid = 2;   // 查询用户
+  string privilege = 3;  // 查询权限
+}
+
+message AuthorizedResourceReply {
+  repeated string permitResources = 1;  // 已授权资源
+  repeated string forbidResources = 2;  // 禁止访问资源
+}
+
+// 查询用户在资源上拥有的权限集合
+message AuthorizedPrivilegeQueryRequest {
+  string appId = 1; // 应用ID
+  string uid = 2;   // 查询用户
+  string path = 3;  // 查询资源
+}
+
+message AuthorizedPrivilegeReply {
+  repeated string privileges = 1;  // 拥有权限
+}
+
+// 查询在资源上拥有权限的用户集合
+message AuthorizedUserQueryRequest {
+  string appId = 1; // 应用ID
+  string path = 2;   // 查询资源
+  string privilege = 3;  // 查询权限
+}
+
+message AuthorizedUserReply {
+  repeated string users = 1;  // 用户集合
+}

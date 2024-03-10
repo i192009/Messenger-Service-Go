@@ -1,0 +1,10 @@
+.env
+bin/logs/
+*.logs
+*.pb.go
+*.iml
+*.xml
+.idea/workspace.xml
+.vscode/
+.history/
+.log

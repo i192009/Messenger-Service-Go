@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package structure;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.zetareview.lib";
+option java_outer_classname = "ZetaReviewProto";
+
+service ZetaReviewService {
+
+  rpc listFileRecursive(C2S_ListFileRecursiveReq) returns(C2S_ListFileRecursiveRpn);
+
+  rpc queryUrl(C2S_QueryUrlReq) returns(C2S_QueryUrlRpn);
+
+  rpc queryTransferUrls(C2S_QueryTransferUrlsReq) returns(C2S_QueryTransferUrlsRpn);
+}
+
+message C2S_ListFileRecursiveReq{
+  repeated string ids = 10;// 项目/文件夹/文件id
+  string placeOnFileId = 20; //存档id
+  bool checkAuth = 30; // 是否检查权限
+  string userOpenId = 40; // 操作用户的openid
+}
+
+message FileInfo{
+  string id = 10; // 项目/文件夹/文件id
+  string name = 20; // 名称
+  string size = 30; // 文件大小
+  string companyId = 40; // 企业id
+  string downLoadOriginUrl = 50; // 原始文件的下载路径
+  string pathName = 60; // 路径名称
+  string key = 70; // 文件key
+  string owner = 80; // 拥有者
+  int64 version = 90; // 版本
+  int64 updateTime = 100; //更改时间
+  string updateBy = 110; //更改人
+  string rootId = 120; // 项目id
+  string metaId = 121; // 文件元数据id
+}
+
+message C2S_ListFileRecursiveRpn{
+  repeated FileInfo fileInfo = 10;
+}
+
+message C2S_QueryUrlReq{
+  repeated string id = 10; // 文件id
+}
+
+message C2S_QueryUrlRpn{
+  repeated ObsDownload objDownload = 10;
+
+  message ObsDownload{
+    string url = 10;
+    string id = 20;
+    string key = 30;
+    string metaId = 40;
+  }
+}
+
+message C2S_QueryTransferUrlsReq{
+  repeated string ids = 10; // 文件id
+  repeated string includeSuffixList = 20;
+  optional string tag = 30;
+}
+message C2S_QueryTransferUrlsRpn{
+  map<string, ObsDownloadList> fileMap = 10;
+
+  message ObsDownloadList{
+    repeated ObsDownload list = 10;
+  }
+  message ObsDownload{
+    string url = 10;
+    string key = 30;
+    string metaId = 40;
+  }
+}
+

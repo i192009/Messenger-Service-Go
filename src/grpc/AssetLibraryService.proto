@@ -1,0 +1,409 @@
+syntax = "proto3";
+
+package com.zixel.file.backend;
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
+
+option java_multiple_files = true;
+option java_package = "com.zixel.grpc";
+option go_package = "./;services";
+
+service AssetLibrarySerivce{
+
+  //查询资产列表
+  rpc QueryAssetPage(QueryAssetPageRequest) returns (QueryAssetPageResponse){}
+  //添加资产
+  rpc AddAsset(AddAssetRequest) returns (AddAssetResponse){}
+  //上传资产
+  rpc AssetUploaded(AssetUploadedRequest) returns (AssetUploadedResponse){}
+  //修改资产
+  rpc UpdateAsset(UpdateAssetRequest) returns (UpdateAssetResponse){}
+  //删除资产
+  rpc DeleteAsset(DeleteAssetRequest) returns (DeleteAssetResponse){}
+  //获取资产详情
+  rpc GetAsset(GetAssetRequest) returns (GetAssetResponse){}
+  //更新缩略图
+  rpc UpdateAssetThumbnail(UpdateAssetThumbnailRequest) returns (UpdateAssetThumbnailResponse){}
+  //添加分类
+  rpc AddClass(AddClassRequest) returns (AddClassResponse){}
+  //修改分类
+  rpc UpdateClass(UpdateClassRequest) returns (UpdateClassResponse){}
+  //删除分类
+  rpc DeleteClass(DeleteClassRequest) returns (DeleteClassResponse){}
+  //查询分类
+  rpc QueryClass(QueryClassRequest) returns (QueryClassResponse){}
+  //查询分类详情
+  rpc GetClass(GetClassRequest) returns (GetClassResponse){}
+  //添加资产标签
+  rpc AddTag(AddTagRequest) returns (AddTagResponse){}
+  //修改资产标签
+  rpc UpdateTag(UpdateTagRequest) returns (UpdateTagResponse){}
+  //删除资产标签
+  rpc DeleteTag(DeleteTagRequest) returns (DeleteTagResponse){}
+  //查询资产标签
+  rpc QueryTag(QueryTagRequest) returns (QueryTagResponse){}
+  //查询资产标签列表
+  rpc QueryTagList(QueryTagListRequest) returns (QueryTagListResponse){}
+  //添加实例范围
+  rpc AddInstanceScopeId(AddInstanceScopeIdRequest) returns (AddInstanceScopeIdResponse){}
+  //删除实例范围
+  rpc DeleteInstanceScopeId(DeleteInstanceScopeIdRequest) returns (DeleteInstanceScopeIdResponse){}
+  //获取实例范围
+  rpc GetInstanceScopeId(GetInstanceScopeIdRequest) returns (GetInstanceScopeIdResponse){}
+  //查询实例范围
+  rpc QueryInstanceScopeId(QueryInstanceScopeIdRequest) returns (QueryInstanceScopeIdResponse){}
+  //更新实例范围
+  rpc UpdateInstanceScopeId(UpdateInstanceScopeIdRequest) returns (UpdateInstanceScopeIdResponse){}
+}
+
+message CommonRequest{
+  optional string appId = 14;
+  optional string userId = 15;
+  optional string instanceId = 16;
+  optional string tenantId = 17;
+}
+
+message AddClassRequest{
+  CommonRequest commonRequest = 10;
+  string name = 20;
+  string description = 30;
+  repeated string types = 40;
+  int64 maxSize = 50;
+  string source = 60;
+  string creator = 70;
+  repeated string peimitInstanceID = 80;
+  bool isTranfrom = 90;
+  google.protobuf.Any pipelines = 100;
+}
+message AddClassResponse{
+  int32 code = 1;
+  string message = 2;
+  string classId = 3;
+}
+
+message UpdateClassRequest{
+  CommonRequest commonRequest = 10;
+  string classId = 20;
+  optional string name = 30;
+  optional string description = 40;
+  repeated string types = 50;
+  optional int64 maxSize = 60;
+  repeated string peimitInstanceID = 90;
+  optional bool isTranfrom = 100;
+  optional google.protobuf.Any pipelines = 110;
+}
+message UpdateClassResponse{
+  int32 code = 1;
+  string message = 2;
+}
+message DeleteClassRequest{
+  CommonRequest commonRequest = 10;
+  string classId = 20;
+}
+message DeleteClassResponse{
+  int32 code = 1;
+  string message = 2;
+}
+message QueryClassRequest{
+  CommonRequest commonRequest = 10;
+}
+message QueryClassResponse{
+  int32 code = 1;
+  string message = 2;
+  repeated Class classes = 3;
+}
+message Class{
+  string classId = 1;
+  string name = 2;
+  string description = 3;
+  repeated string types = 4;
+  int64 maxSize = 5;
+  string source = 6;
+  string creator = 7;
+  repeated string peimitInstanceID = 8;
+  bool isTranfrom = 9;
+  google.protobuf.Any pipelines = 10;
+}
+message GetClassRequest{
+  CommonRequest commonRequest = 10;
+  string classId = 20;
+}
+message GetClassResponse{
+  int32 code = 1;
+  string message = 2;
+  Class class = 3;
+}
+
+message QueryAssetPageRequest{
+  int64 page = 1;
+  int64 pageSize = 2;
+  string name = 3;
+  int32 type = 4;
+  string platform = 5;
+  string owner = 6;
+  string permissionType = 8;
+  optional string class = 9;
+  repeated string tags = 10;
+  optional string search = 11;
+  optional  string order = 12;
+  optional int32 sort = 13; //排序 0 - 升序， 1 - 降序
+  string appId = 14;
+  string userId = 15;
+  string instanceId = 16;
+}
+
+message QueryAssetPageResponse{
+  int32 code = 1;
+  string message = 2;
+  int64 page = 3;
+  int64 pageSize = 4;
+  int64 total = 5;
+  repeated Asset Asset = 6;
+}
+
+message Asset {
+  string  Id = 1;
+  string  FileName = 2;
+  int64  FileSize = 3;
+  string  Type = 4 ;
+  string  Class = 5;
+  string  ClassName = 6;
+  repeated string  Tags = 7;
+  repeated string  TagsName = 8;
+  string  Title = 9;
+  string  InstanceId = 10;
+  string  AppId = 11;
+  string  Description = 12;
+  string  Thumbnail = 13;
+  string  ThumbnailDownloadUrl = 14;
+  string  Url = 15;
+  string  AssetDownloadUrl = 16;
+  string  PermissionType = 17;
+  int32  Status = 18;
+  string  Source = 19;
+  map<string, google.protobuf.Struct>  External = 20;
+  string  Creator = 21;
+  string  CreatorName = 22;
+  string  Owner = 23;
+  repeated string  RelatedAssets = 24;
+  string  CreateTime = 25;
+  string  UpdateTime = 26;
+}
+
+message AddAssetRequest {
+  string name = 10;
+  int64 size = 11;
+  string type = 20;
+  string class = 30;
+  repeated string platforms = 31;
+  repeated string tags = 40;
+  string title = 50;
+  string instanceId = 60;
+  string appId = 70;
+  string description = 80;
+  string thumbnail = 90;
+  int64 thumbnailSize = 91;
+  string thumbnailType = 92;
+  string url = 100;
+  string permissionType = 110;
+  string source = 120;
+  string userId = 130;
+  string owner = 140;
+  repeated string relatedAssets = 150;
+  map<string, google.protobuf.Struct>  External = 160;
+}
+
+message AddAssetResponse{
+  int32 code = 10;
+  string message = 20;
+  string AssetId = 30;
+  string AssetUploadUrl = 40;
+  string ThumbUploadUrl = 50;
+  map<string, string> OtherFiles = 60;
+}
+
+message AssetUploadedRequest{
+  string id = 10;
+  string permissionType = 20;
+}
+message AssetUploadedResponse{
+  int32 code = 1;
+  string message = 2;
+}
+message UpdateAssetRequest{
+  string id = 10;
+  string name = 20;
+  //  string type = 30;
+  //  string class = 40;
+  repeated string tags = 50;
+  string title = 60;
+  //  string instanceId = 70;
+  string appId = 80;
+  string description = 90;
+  int64 thumbnailSize = 91;
+  string thumbnail = 100;
+  string url = 110;
+  string permissionType = 120;
+  //  string source = 130;
+  string userId = 140;
+
+  //  string owner = 150;
+  //  repeated string relatedAssets = 160;
+  map<string, google.protobuf.Struct>  External = 160;
+}
+
+message UpdateAssetResponse{
+  int32 code = 1;
+  string message = 2;
+}
+
+message DeleteAssetRequest{
+  CommonRequest commonRequest = 10;
+  string id = 20;
+  string permissionType = 30;
+
+}
+message DeleteAssetResponse{
+  int32 code = 1;
+  string message = 2;
+}
+
+message GetAssetRequest{
+  CommonRequest commonRequest = 10;
+  string id = 20;
+  string permissionType = 30;
+}
+message GetAssetResponse{
+  int32 code = 1;
+  string message = 2;
+  Asset asset = 3;
+}
+
+message UpdateAssetThumbnailRequest{
+  CommonRequest commonRequest = 10;
+  string assetId = 20;
+  string permissionType = 30;
+  int64 thumbnailSize = 40;
+}
+
+message UpdateAssetThumbnailResponse{
+  int32 code = 10;
+  string message = 20;
+  string thumbnail = 30;
+}
+
+//标签
+message AddTagRequest{
+  CommonRequest commonRequest = 10;
+  string name = 20;
+  string description = 30;
+  string appId = 40;
+  string ClassId = 50;
+  string  Source = 60;
+  string userId = 70;
+  string owner = 80;
+  string type = 90;
+}
+message AddTagResponse{
+  int32 code = 10;
+  string message = 20;
+  string tagId = 30;
+}
+message UpdateTagRequest{
+  CommonRequest commonRequest = 10;
+  string id = 20;
+  string name = 30;
+  string description = 40;
+}
+message UpdateTagResponse{
+  int32 code = 10;
+  string message = 20;
+}
+message DeleteTagRequest{
+  CommonRequest commonRequest = 10;
+  string id = 20;
+}
+message DeleteTagResponse{
+  int32 code = 10;
+  string message = 20;
+}
+message QueryTagRequest{
+  CommonRequest commonRequest = 10;
+  optional string name = 20;
+  optional string classId = 40;
+  optional string owner = 70;
+  optional string type = 80;
+}
+message QueryTagResponse{
+  int32 code = 10;
+  string message = 20;
+  repeated Tag tag = 30;
+}
+message QueryTagListRequest{
+  CommonRequest commonRequest = 10;
+  string owner = 70;
+  string type = 80;
+}
+message QueryTagListResponse{
+  int32 code = 10;
+  string message = 20;
+  repeated Tag tag = 30;
+}
+message Tag{
+  string id = 10;
+  string name = 20;
+  string description = 30;
+  string appId = 40;
+  string classId = 50;
+  string source = 60;
+  string userId = 70;
+  string owner = 80;
+  string type = 90;
+  string createTime = 100;
+  string updateTime = 110;
+}
+//
+message AddInstanceScopeIdRequest{
+  string instanceId = 10;
+  map<string, string> scopeIdMap = 20;
+}
+message AddInstanceScopeIdResponse{
+  int32 code = 1;
+  string message = 2;
+}
+message DeleteInstanceScopeIdRequest{
+  string instanceId = 10;
+}
+message DeleteInstanceScopeIdResponse{
+  int32 code = 1;
+  string message = 2;
+}
+message GetInstanceScopeIdRequest{
+  string instanceId = 10;
+}
+message GetInstanceScopeIdResponse{
+  int32 code = 1;
+  string message = 2;
+  InstanceScopeId InstanceScopeId = 3;
+}
+message  InstanceScopeId{
+  string instanceId = 10;
+  map<string, string> scopeIdMap = 20;
+}
+message QueryInstanceScopeIdRequest{
+}
+message QueryInstanceScopeIdResponse{
+  int32 code = 1;
+  string message = 2;
+  repeated InstanceScopeId InstanceScopeIds = 3;
+}
+message UpdateInstanceScopeIdRequest{
+  string instanceId = 10;
+  map<string, string> scopeIdMap = 20;
+}
+message UpdateInstanceScopeIdResponse{
+  int32 code = 1;
+  string message = 2;
+}
+

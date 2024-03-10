@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package proto;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "./;services";
+
+service ConnectionService_XfusionService {
+  rpc SendPodInstance(C2S_SendPodInstanceRequest) returns (C2S_SendPodInstanceResponse);
+}
+
+message C2S_SendPodInstanceRequest {
+  string podIp = 1;
+  string modelId = 2;
+  string instanceId = 3;
+}
+
+message C2S_SendPodInstanceResponse {
+  string message = 1;
+}
+
+message C2S_WebSocketMessageSent{
+  string target = 1;
+  string extern = 2;
+  string action = 3;
+  string encode = 4;
+  oneof body {
+    string bodyString = 5;
+    XFusionMessage bodyXFusion = 6;
+    SessionMessage bodySession = 7;
+    MessengerMessage bodyMessenger = 8;
+  }
+}
+
+message C2S_WebSocketMessageReceived{
+  string source = 1;
+  string extern = 2;
+  string action = 3;
+  string encode = 4;
+  oneof body {
+    string bodyString = 5;
+    XFusionMessage bodyXFusion = 6;
+    SessionMessage bodySession = 7;
+    MessengerMessage bodyMessenger = 8;
+  }
+}
+
+message XFusionMessage{}
+message SessionMessage{}
+message MessengerMessage{}

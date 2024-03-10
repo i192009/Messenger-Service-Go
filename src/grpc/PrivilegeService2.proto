@@ -1,0 +1,795 @@
+syntax = "proto3";
+
+package privilege;
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.privilege.lib";
+option java_outer_classname = "PrivilegeServiceProto";
+option go_package = "./;services";
+
+/**
+    权限系统（重构后）
+    注意本文件与旧权限服务文件PrivilegeService.proto有命名冲突，不可同时使用
+ */
+
+/*******************************************
+                鉴权管理接口
+ * 根据授权三要素 A<N, R, H> 进行鉴权，实际为对授权记录的查询
+ *  N: 资源
+ *  R: 角色
+ *  H: 授权对象
+ *  P: 权限点（授权记录中以角色形式存储，但鉴权查询时以权限点形式传入）
+ *  U: 单个用户（授权记录中以授权对象形式存储，但鉴权查询时以用户形式传入）
+ *******************************************/
+service AuthCheckService {
+    // 给定<N, R, U>三元，查询是否被授权
+    // 本接口使用权限点查询时可以使用用户-权限点缓存加速，请尽量使用权限点鉴权
+    rpc CheckAuth(C2S_CheckAuthReq_t) returns (S2C_CheckAuthRpn_t) {};
+    // 给定<N, R, U>三元，查询是否被授权，并返回所有通过鉴权的授权记录的信息
+    // 无缓存，如无获取授权记录信息需求，请优先使用CheckAuth接口
+    rpc CheckAuthWithDetail(C2S_CheckAuthReq_t) returns (S2C_CheckAuthWithDetailRpn_t) {};
+    // 给定<N, U>两元，查询被授权角色R
+    rpc GetAuthRoles(C2S_GetAuthRolesReq_t) returns (S2C_GetAuthRolesRpn_t) {};
+    // 给定<N, U>两元，查询被授权角色R，并返回所有通过鉴权的授权记录的信息
+    // 无缓存，如无获取授权记录信息需求，请优先使用GetAuthRoles接口
+    rpc GetAuthRolesWithDetail(C2S_GetAuthRolesReq_t) returns (S2C_GetAuthRolesWithDetailRpn_t) {};
+    // 给定<N, U>两元，查询被授权权限Match集合
+    // 本接口为GetAuthRoles的简化版本，仅返回其中的associates字段集合
+    // 本接口可以使用用户-权限点缓存加速，因此与其使用GetAuthRoles获取授权的全部角色详情，请尽量使用本接口直接获取权限点
+    rpc GetAuthPrivileges(C2S_GetAuthPrivilegesReq_t) returns (S2C_GetAuthPrivilegesRpn_t) {};
+    // 给定<N, U>两元，查询被授权权限Match集合，并返回所有通过鉴权的授权记录的信息
+    // 无缓存，如无获取授权记录信息需求，请优先使用GetAuthPrivileges接口
+    rpc GetAuthPrivilegesWithDetail(C2S_GetAuthPrivilegesReq_t) returns (S2C_GetAuthPrivilegesWithDetailRpn_t) {};
+    // 给定<N, R/P>两元，查询被授权用户U
+    rpc GetAuthHolders(C2S_GetAuthHoldersReq_t) returns (S2C_GetAuthHoldersRpn_t) {};
+    // 给定<R/P, U>两元，查询被授权资源R
+    rpc GetAuthResources(C2S_GetAuthResourcesReq_t) returns (S2C_GetAuthResourcesRpn_t) {};
+    // 给定<R/P, U>两元，查询被授权资源R，并返回所有通过鉴权的授权记录的信息
+    rpc GetAuthResourcesWithDetail(C2S_GetAuthResourcesReq_t) returns (S2C_GetAuthResourcesWithDetailRpn_t) {};
+    // 给定<R>一元，查询所有授权记录
+    rpc GetAuthsByResource(C2S_GetAuthsByResourceReq_t) returns (S2C_GetAuthsByResourceRpn_t) {};
+    // 给定<U>一元，查询所有授权记录，**慢查询**
+    rpc GetAuthsByUser(C2S_GetAuthsByUserReq_t) returns (S2C_GetAuthsByUserRpn_t) {};
+    // 不支持给定<R>一元，查询所有授权记录。无需求场景且查询效率低
+}
+
+/*******************************************
+                授权管理接口
+ *******************************************/
+service AuthGrantService {
+    // 给<N, R>增加授权对象H。给定<N, R, H>三元修改授权记录A
+    rpc GrantHolder(C2S_GrantHolderReq_t) returns (S2C_GrantStatusRpn_t) {};
+    // 撤销<N, R>对授权对象H的授权。给定<N, R, H>三元修改授权记录A
+    rpc RevokeHolder(C2S_RevokeHolderReq_t) returns (S2C_RevokeStatusRpn_t) {};
+    // 更新授权的角色。给定<N, H>查找授权记录，更新其角色
+    rpc UpdateRole(C2S_GrantRoleUpdateReq_t) returns (google.protobuf.Empty) {};
+    // 删除指定范围全部授权记录
+    rpc DeleteAuths(C2S_DeleteAuthsReq_t) returns (S2C_RevokeStatusRpn_t) {};
+    // 撤销<N, H>范围内，对全部角色的授权记录
+    rpc DeleteAuthsByResourceAndHolder(C2S_DeleteAuthsByResourceAndHolderReq_t) returns (S2C_RevokeStatusRpn_t) {};
+    // 批量删除指定资源全部授权记录
+    rpc BatchDeleteAuths(C2S_BatchDeleteAuthsReq_t) returns (S2C_RevokeStatusRpn_t) {};
+}
+
+/*******************************************
+                授权对象管理接口
+ *******************************************/
+service HolderService {
+    // 新建授权对象
+    rpc CreateHolder(C2S_HolderCreateReq_t) returns (S2C_HolderCreateRpn_t) {}
+    // 删除授权对象
+    rpc DeleteHolder(C2S_HolderDeleteReq_t) returns (google.protobuf.Empty) {}
+    // 增接用户群组授权对象中的用户
+    rpc AddGroupUsers(C2S_HolderGroupUserModifyReq_t) returns (google.protobuf.Empty) {}
+    // 移除用户群组授权对象中的用户
+    rpc RemoveGroupUsers(C2S_HolderGroupUserModifyReq_t) returns (google.protobuf.Empty) {}
+    // 修改授权对象
+    rpc UpdateHolder(C2S_HolderUpdateReq_t) returns (google.protobuf.Empty) {}
+    // 获取授权对象详情
+    rpc GetHolderInfo(C2S_HolderGetReq_t) returns (S2C_HolderGetRpn_t) {}
+    // 查询授权对象列表
+    rpc QueryHolders(C2S_HolderQueryReq_t) returns (S2C_HolderQueryRpn_t) {}
+    // 检查授权对象是否包含用户
+    rpc CheckUser(C2S_UserCheckReq_t) returns (S2C_UserCheckRpn_t) {}
+}
+
+/*******************************************
+                角色管理接口
+ *******************************************/
+service RoleService {
+    // 新建角色
+    rpc CreateRole(C2S_RoleCreateReq_t) returns (S2C_RoleCreateRpn_t) {}
+    // 删除角色
+    rpc DeleteRole(C2S_RoleDeleteReq_t) returns (google.protobuf.Empty) {}
+    // 修改角色详情
+    rpc UpdateRole(C2S_RoleUpdateReq_t) returns (google.protobuf.Empty) {}
+    // 增加角色权限
+    rpc AddPrivileges(C2S_RolePrivilegeModifyReq_t) returns (google.protobuf.Empty) {}
+    // 移除角色权限
+    rpc RemovePrivileges(C2S_RolePrivilegeModifyReq_t) returns (google.protobuf.Empty) {}
+    // 查询角色详情
+    rpc GetRoleInfo(C2S_RoleInfoGetReq_t) returns (S2C_RoleInfoGetRpn_t) {}
+    // 根据权限点查询角色名称，返回拥有该权限点的全部角色名称
+    rpc GetRoleByMatch(C2S_RoleGetByMatchReq_t) returns (S2C_RoleGetByMatchRpn_t) {}
+    // 根据权限点全集精确查询或新建角色，返回与给定权限点集合完全相同的角色名称
+    rpc GetOrCreateRoleByExactMatches(C2S_RoleExactGetOrCreateReq_t) returns (S2C_RoleExactGetOrCreateRpn_t) {}
+    // 查询角色列表
+    rpc QueryRoles(C2S_RoleQueryReq_t) returns (S2C_RoleQueryRpn_t) {}
+}
+
+/*******************************************
+                权限管理接口
+                创建维护等接口暂不开放，统一从前端创建权限点
+ *******************************************/
+service PrivilegeService {
+    // 新建权限点
+    rpc CreatePrivilege(C2S_PrivilegeCreateReq_t) returns (S2C_PrivilegeCreateRpn_t) {}
+    // 删除权限点
+    rpc DeletePrivilege(C2S_PrivilegeDeleteReq_t) returns (google.protobuf.Empty) {}
+    // 修改权限点
+    rpc UpdatePrivilege(C2S_PrivilegeUpdateReq_t) returns (google.protobuf.Empty) {}
+    // 获取权限点详情
+    rpc GetPrivilegeInfo(C2S_PrivilegeGetReq_t) returns (S2C_PrivilegeGetRpn_t) {}
+    // 查询权限点列表
+    rpc QueryPrivileges(C2S_PrivilegeQueryReq_t) returns (S2C_PrivilegeQueryRpn_t) {}
+    // 批量确认权限点是否存在
+    rpc CheckPrivilegesExist(C2S_PrivilegesExistCheckReq_t) returns (S2C_PrivilegesExistCheckRpn_t) {}
+}
+
+/*******************************************
+                访问控制服务接口
+ *******************************************/
+service AccessControlService {
+    // 校验用户对接口是否具有权限
+    rpc CheckApiAuth(C2S_CheckApiAuthReq_t) returns (S2C_CheckApiAuthRpn_t) {}
+}
+
+/*******************************************
+                权限系统内部接口访问控制服务
+                不同使用场景可能用法不同，当前接口适配xdm，后续如为UniverseAccessControl增加访问控制时，可能另增新接口
+                稳定后可能成为控制权限系统接口访问权限的标准解决方案
+ *******************************************/
+service InnerAccessControlService {
+    // （适用于Xdm）应用创建者创建应用后的初始化及授权,供应用创建时调用
+    rpc XdmCreateApp(C2S_XdmAppCreateReq_t) returns (google.protobuf.Empty) {}
+    // （适用于Xdm）启用应用后的初始化及授权，供租户管理员启用应用时调用
+    rpc XdmActivateApp(C2S_XdmAppActivateReq_t) returns (google.protobuf.Empty) {}
+    // 检查用户在指定应用下是否有指定接口访问权限
+    rpc CheckApiAuth(C2S_CheckApiAuthReq_t) returns (S2C_CheckApiAuthRpn_t) {}
+}
+
+/*******************************************
+                通用数据模型
+ *******************************************/
+message Scope {
+    string appId = 1;   // 隶属app
+    string instanceId = 2;   // 隶属应用
+    string tenantId = 3;        // 隶属租户
+}
+
+message Pattern {
+    int32 source = 1;  // 来源服务，权限系统使用，决定要向哪个系统验证信息，当前仅限 1-用户服务 2-企业服务
+    string type = 2;    // 标识符类型，周边系统自行使用，标识identifier对象的类型，如"group_id"
+    string identifier = 3;  // 对象标识符，周边系统自行使用，标识本授权对象所描述的用户范围，如"gp_123456"
+}
+
+enum UserIdType {
+    // 无法识别的id类型，适用于非标准用户id
+    // 一般只能参与单个用户、用户组类型鉴权，不能参与匹配模式鉴权，因为匹配模式一般需要识别具体用户身份，进而获取相关信息
+    UNRECOGNIZED_ID = 0;
+
+    USER_ID = 1;
+    EMPLOYEE_ID = 2;
+    UNION_ID = 3;
+    OPEN_ID = 4;
+}
+
+/*******************************************
+                鉴权管理数据模型
+ *******************************************/
+// 权限点最小信息
+message NanoPrivilege {
+    string id = 10; // 权限点id
+    string match = 20;  // 权限点内容
+}
+// 授权记录最小信息
+message NanoAuthorization {
+    string id = 10;         // 授权记录id
+    string resource = 20;   // 授权资源
+    string srcDesc = 30;       // 本授权记录中资源的描述
+}
+// 权限点详情
+message PrivilegeDetail {
+    string id = 10;             // 权限点id
+    string match = 20;          // 权限点内容
+    int32 type = 30;            // 权限点类型
+    string description = 31;    // 权限点描述
+    int32 status = 40;          // 权限点状态 1-正常 2-停用
+    repeated NanoPrivilege definedAssociates = 50;  // 定义的关联权限，包含全部状态的权限点
+    repeated NanoPrivilege allAssociates = 60;      // 全部关联权限，包含关联权限点的关联权限点，仅包含在正常状态的
+}
+// 授权角色详情
+message RoleDetail {
+    string id = 10;  // 角色Id
+    string appId = 11;      // 隶属应用
+    string instanceId = 12; // 隶属实例
+    string tenantId = 13;   // 隶属租户
+    string name = 20;       // 角色名称
+    string description = 21;    // 角色描述
+    string tag = 22;        // 角色标签
+    int32 status = 30;      // 角色状态 1-正常，2-停用
+    repeated NanoPrivilege privileges = 40; // 角色自身拥有的权限点集合
+    repeated NanoPrivilege associates = 50; // 角色拥有的所有权限点及其关联权限点集合。注意包含角色自身权限点，仅包含正常状态的权限点。
+}
+// 授权对象详情
+message HolderDetail {
+    string id = 10;         // 授权对象id
+    string name = 20;       // 授权对象名称
+    int32 type = 30;        // 授权对象类别，0-单个用户，1-用户组，2-匹配模式
+    bool persist = 40;      // 是否为持久化授权对象，true-持久化授权对象，false-临时授权对象
+    int32 status = 41;      // 授权对象状态 1-正常 2-停用
+    string user = 50;               // 用户，授权对象类别为单个用户时才有本字段
+    repeated string users = 60;     // 用户集合，授权对象类别为用户组时才有本字段
+    Pattern pattern = 70;            // 匹配模式,授权对象类别为匹配模式时才有本字段
+}
+// 资源上的授权记录详情
+message ResourceAuthDetail {
+    string id = 10;  // 授权记录
+    string srcDesc = 15;                 // 本授权记录中资源的描述
+    RoleDetail roleDetail = 20;          // 授权角色详情
+    HolderDetail holderDetail = 30;      // 授权对象详情
+}
+// 用户上的授权记录详情
+message UserAuthDetail {
+    repeated string authIds = 10;       // 授权记录id集合，同一用户处于不同授权对象下可能有多条授权记录符合条件
+    string resource = 20;               // 资源标识符
+    RoleDetail roleDetail = 30;         // 授权角色详情
+}
+// 授权对象标识符，用以支持不同的操作授权对象形式
+message HolderIdentifier {
+    int32 type = 1;             // 标识符类型 1-授权对象名 2-授权对象id
+    // 根据type，如下字段择一传入
+    string name = 10;       // 授权对象名称
+    string id = 11;         // 授权对象id
+}
+// 鉴权时的角色标识符，告诉系统使用哪个角色进行鉴权
+message RoleIdentifier {
+    int32 type = 1;             // 标识符类型 1-角色名 2-角色id 3-权限点match字段
+    string roleName = 10;       // 角色名称
+    string roleId = 11;         // 角色id
+    string privilegeMatch = 12; // 角色包含的权限点match字段，此方式可以利用权限点缓存优化，建议使用
+}
+
+// 授权权限点及对应授权记录详情
+message PrivilegeWithAuthInfo {
+    string privilegeMatch = 10;         // 授权权限点match字段
+    repeated NanoAuthorization authInfos = 20; // 授权记录详情
+}
+
+// 授权角色及对应授权记录详情
+message RoleDetailWithAuthInfo {
+    RoleDetail roleDetail = 10;         // 授权角色详情
+    repeated NanoAuthorization authInfos = 20; // 授权记录详情
+}
+
+message C2S_CheckAuthReq_t {
+    Scope scope = 1;            // 授权作用域
+    string resource = 10;       // 资源标识符
+    RoleIdentifier roleIdentifier = 20; // 角色标识符
+    // 用户标识符，与 userIdType 对应
+    // 单个用户授权对象、用户组授权对象，直接与存储的值比对，无需传入 userIdType，但传入的标识符必须与授权时的存储值相同
+    // 匹配模式授权对象，必须传入 userIdType, 以便进行模式匹配时向相关周边系统传递准确的用户id
+    string user = 30;
+    optional UserIdType userIdType = 31;      // 用户标识符类型，1-userId,2-employeeId,3-unionId,4-openId
+}
+message S2C_CheckAuthRpn_t {
+    bool pass = 10;             // true - 鉴权通过 false - 鉴权不通过
+}
+
+message S2C_CheckAuthWithDetailRpn_t {
+    bool pass = 10;         // 鉴权是否通过 true - 鉴权通过 false - 鉴权不通过
+    repeated NanoAuthorization passedAuths = 20; // 鉴权通过时返回通过的授权记录详情
+}
+
+message C2S_GetAuthRolesReq_t {
+    Scope scope = 1;
+    string resource = 10;           // 资源标识符
+    // 用户标识符，与 userIdType 对应
+    // 单个用户授权对象、用户组授权对象，直接与存储的值比对，无需传入 userIdType，但传入的标识符必须与授权时的存储值相同
+    // 匹配模式授权对象，必须传入 userIdType, 以便进行模式匹配时向相关周边系统传递准确的用户id
+    string user = 20;
+    optional UserIdType userIdType = 21;      // 用户标识符类型，1-userId,2-employeeId,3-unionId,4-openId
+    bool returnPrivilege = 30;      // 是否将返回的角色集合转换为权限点集合
+}
+message S2C_GetAuthRolesRpn_t {
+    repeated RoleDetail roleDetails = 10;       // 用户在该资源上被授予的角色详情集合
+}
+
+message S2C_GetAuthRolesWithDetailRpn_t {
+    repeated RoleDetailWithAuthInfo roleDetails = 10;       // 用户在该资源上被授予的角色详情集合，及对应的授权记录详情集合
+}
+
+message C2S_GetAuthPrivilegesReq_t {
+    Scope scope = 1;
+    string resource = 10;   // 资源标识符
+    // 用户标识符，与 userIdType 对应
+    // 单个用户授权对象、用户组授权对象，直接与存储的值比对，无需传入 userIdType，但传入的标识符必须与授权时的存储值相同
+    // 匹配模式授权对象，必须传入 userIdType, 以便进行模式匹配时向相关周边系统传递准确的用户id
+    string user = 20;
+    optional UserIdType userIdType = 21;      // 用户标识符类型，1-userId,2-employeeId,3-unionId,4-openId
+}
+message S2C_GetAuthPrivilegesRpn_t {
+    repeated string privileges = 10;       // 用户在该资源上被授予的权限点match字段集合
+}
+
+message S2C_GetAuthPrivilegesWithDetailRpn_t {
+    repeated PrivilegeWithAuthInfo privileges = 10;       // 用户在该资源上被授予的权限点集合,及对应的授权记录详情集合
+}
+
+
+message C2S_GetAuthHoldersReq_t {
+    Scope scope = 1;    // 授权作用域
+    string resource = 10;  // 资源标识符
+    RoleIdentifier roleIdentifier = 20;     // 角色标识符
+}
+message S2C_GetAuthHoldersRpn_t {
+    repeated HolderDetail holderDetails = 10;      // 资源在角色/权限点上授权的对象集合
+}
+
+message C2S_GetAuthResourcesReq_t {
+    Scope scope = 1;        // 授权作用域
+    repeated string checkList = 10; // 待查验的资源清单，资源id集合
+    RoleIdentifier roleIdentifier = 20;     // 角色标识符
+    // 用户标识符，与 userIdType 对应
+    // 单个用户授权对象、用户组授权对象，直接与存储的值比对，无需传入 userIdType，但传入的标识符必须与授权时的存储值相同
+    // 匹配模式授权对象，必须传入 userIdType, 以便进行模式匹配时向相关周边系统传递准确的用户id
+    string user = 30;
+    optional UserIdType userIdType = 31;      // 用户标识符类型，1-userId,2-employeeId,3-unionId,4-openId
+}
+message S2C_GetAuthResourcesRpn_t {
+    repeated string resources = 10;   // 在资源清单中，用户在角色/权限点上被授权的资源集合
+}
+
+message S2C_GetAuthResourcesWithDetailRpn_t {
+    repeated NanoAuthorization passedAuths = 10; // 在资源清单中，用户通过鉴权的授权记录集合
+}
+
+message C2S_GetAuthsByResourceReq_t {
+    Scope scope = 1;        // 授权作用域
+    string resource = 10;  // 资源标识符
+    bool returnPrivilege = 20;   // 是否将返回的角色集合转换为权限点集合
+}
+message S2C_GetAuthsByResourceRpn_t {
+    repeated ResourceAuthDetail resourceAuths = 10; // 该资源下的所有授权角色及对应授权用户
+}
+
+
+message C2S_GetAuthsByUserReq_t {
+    Scope scope = 1;        // 授权作用域
+    // 用户标识符，与 userIdType 对应
+    // 单个用户授权对象、用户组授权对象，直接与存储的值比对，无需传入 userIdType，但传入的标识符必须与授权时的存储值相同
+    // 匹配模式授权对象，必须传入 userIdType, 以便进行模式匹配时向相关周边系统传递准确的用户id
+    string user = 10;
+    optional UserIdType userIdType = 11;      // 用户标识符类型，1-userId,2-employeeId,3-unionId,4-openId
+    bool returnPrivilege = 20;   // 是否将返回的角色集合转换为权限点集合
+}
+message S2C_GetAuthsByUserRpn_t {
+    repeated UserAuthDetail userAuths = 10; // 该资源下的所有授权角色及对应授权用户
+}
+
+/*******************************************
+                授权管理数据模型
+ *******************************************/
+message C2S_GrantHolderReq_t {
+    Scope scope = 1;    // 授权作用域
+    string resource = 10; // 资源标识符,不可重复,可以是节点id或文件名称等任意形式
+    string srcDesc = 11;    // 资源描述，对本次授权的资源的进一步描述
+    string roleName = 20;     // 角色名称", required = true, example = "editor")
+    int32 holderType = 30; // 授权对象类型 1-单个用户, 2-用户群体(自动创建), 3-匹配模式(自动创建), 4-授权对象(指定)
+    optional string user = 40; // 单个用户uid/oid, 将直接用于创建授权记录, 与users,pattern,holderName择一传入即可"
+    repeated string users = 50; // 用户集合, 将据此创建临时授权对象, 与user,pattern,holderName择一传入即可"
+    optional Pattern pattern = 60; // 匹配模式, 将据此创建临时授权对象, 与user,users,holderName择一传入即可"
+    optional string holderName = 70; // 授权对象名, 将给指定的授权对象授权, 与user,users,pattern择一传入即可"
+}
+message S2C_GrantStatusRpn_t {
+    bool success = 10; // 授权成功状态
+    bool hasNewAuth = 20; // 授权过程中是否有新生成的授权记录
+    optional string newAuthId = 30; // 新生成的授权记录Id。hasNew为false时，本字段为null
+    optional string newHolderId = 31;   // 新授权的授权对象id，也可能直接是单个用户的id。hasNew为false时，本字段为null
+}
+
+message C2S_RevokeHolderReq_t {
+    Scope scope = 1;    // 授权作用域
+
+    // 是否确保生效
+    // true(默认) - 对非指定授权对象的撤销将修改持久化授权对象以确保修改生效
+    // false - 对非指定授权对象的撤销仅影响临时授权对象
+    bool ensure = 2;
+
+    string resource = 10; // 资源标识符,不可重复,可以是节点id或文件名称等任意形式
+    string roleName = 20;     // 角色名称
+    int32 holderType = 30; // 授权对象类型, 1-单个用户, 2-用户群体(自动创建), 3-匹配模式(自动创建), 4-授权对象(指定)
+    optional string user = 40; // 单个用户uid/oid, 将据此撤销单个用户，以及临时用户群组中的该用户授权, 与users,pattern,holderName择一传入即可
+    repeated string users = 50; // 用户集合, 将据此撤销单个用户，以及临时用户群组中的该用户群授权，与user,pattern,holderName择一传入即可
+    optional Pattern pattern = 60; // 匹配模式, 将据此撤销临时匹配模式授权对象的授权, 与user,users,holderName择一传入即可
+    optional string holderName = 70; // 授权对象名, 将撤销指定的授权对象授权, 与user,users,pattern择一传入即可
+}
+message S2C_RevokeStatusRpn_t {
+    bool success = 10; // 撤销授权成功状态
+    bool hasNewAuth = 20; // 撤销授权过程中是否有新生成的授权记录
+    bool hasDeleteAuth = 30;  // 默认为false // 撤销授权过程中是否删除了已有授权记录
+    // 在将已有授权对象合并为临时授权对象时可能会生成新的授权记录。最多只会有一条新记录生成
+    optional string newAuthId = 40; // 新生成的授权记录Id。hasNew为false时，本字段为null。
+    optional string newHolderId = 41;   // 新授权的授权对象id。hasNew为false时，本字段为null。
+    // 单次撤销可能有多条授权记录被删除
+    repeated string deleteAuthIds = 50; // 被删除的授权记录Id集合。hasDelete为false时，本字段为空。
+    repeated string deleteHolderIds = 51; // 被删除的授权对象Id集合。hasDelete为false时，本字段为空。
+}
+
+message C2S_GrantRoleUpdateReq_t {
+    Scope scope = 1;    // 授权作用域
+    string resource = 10; // 资源标识符,不可重复,可以是节点id或文件名称等任意形式
+    // =============授权对象信息======================
+    int32 holderType = 20; // 授权对象类型", 1-单个用户, 2-临时用户群体, 3-临时匹配模式, 4-授权对象(指定名称), 5-指定授权对象id
+    optional string user = 30; // 单个用户uid/oid, 与pattern, holderName, holderId择一传入即可")
+    optional Pattern pattern = 40; // 临时匹配模式, 与user, holderName, holderId择一传入即可")
+    optional string holderName = 50; // 授权对象名, 将据此查找指定的持久化授权对象, 与user, pattern, holderId择一传入即可")
+    optional string holderId = 60; // 授权对象id, 将据此查找指定的授权对象, 与user, pattern, holderName 择一传入即可")
+    // =============角色更改信息======================
+    string oldRoleName = 70; // 当前角色名称
+    string newRoleName = 80; // 新角色名称
+}
+
+message C2S_DeleteAuthsReq_t {
+    Scope scope = 1;    // 授权作用域
+    string resource = 10;   // 指定资源
+    optional string roleName = 20;  // 指定角色（可以不指定，将删除资源下的全部授权记录）
+}
+
+message C2S_DeleteAuthsByResourceAndHolderReq_t {
+    Scope scope = 1;    // 授权作用域
+    string resource = 10;   // 指定资源
+    int32 holderType = 20;  // 授权对象类型, 1-单个用户, 2-临时用户群体, 3-临时匹配模式, 4-授权对象(指定名称), 5-指定授权对象id
+    // 指定授权对象, 与holderType对应，分别传入
+    // 1-用户id(此时只能删除直接对该单个用户直接授权的授权记录，不检查该用户位于用户组中时的授权记录)
+    // 2/3-暂不支持,必须传入明确的授权对象
+    // 4-传入持久化授权对象name(建议优先使用授权对象id)
+    // 5-传入授权对象id
+    string holder = 30;
+}
+
+message C2S_BatchDeleteAuthsReq_t {
+    Scope scope = 1;    // 授权作用域
+    repeated string resource = 10;   // 指定资源,将删除资源下的全部授权记录
+}
+
+/*******************************************
+                授权对象管理数据模型
+ *******************************************/
+message C2S_HolderCreateReq_t {
+    Scope scope = 1;    // 授权作用域
+    int32 type = 10;   // 类型,1-用户群组,2-匹配模式
+    string name = 20;     // 名称，需保证唯一，仅支持中英文、数字及下划线，最大不超过50字符
+    string description = 30; // 描述，最长不超过100字符
+    repeated string users = 40; // 用户集合，仅在创建授权对象的类型为"用户群组"时需要
+    optional Pattern pattern = 50;    // 匹配模式，仅在创建授权对象的类型为"匹配模式"时需要
+}
+message S2C_HolderCreateRpn_t {
+    string id = 10;     // 新建授权对象id
+}
+
+message C2S_HolderDeleteReq_t {
+    Scope scope = 1;    // 授权作用域
+    HolderIdentifier identifier = 10;     // 授权对象标识符
+}
+
+message C2S_HolderGroupUserModifyReq_t {
+    Scope scope = 1;    // 授权作用域
+    HolderIdentifier identifier = 10;     // 授权对象标识符
+    repeated string users = 20; // 新增/移除用户集合
+}
+
+message C2S_HolderUpdateReq_t {
+    Scope scope = 1;    // 授权作用域
+    HolderIdentifier identifier = 10;     // 授权对象标识符
+
+    optional string name = 20;          // 名称
+    optional string description = 30;   // 描述,最长不超过100字符
+    optional int32 status = 40;         // 状态，1-启用，2-停用
+
+    // 以下仅在更新授权对象的类型为"用户群组"时允许传入
+    repeated string users = 50;         // 全量更新用户集合。未设置或设置为空数组时不更新users字段，要清空用户集合请使用clearUsers=true
+    optional bool clearUsers = 51;      // 清空用户集合，users优先级高于clearUsers，即传入users不为空时，clearUsers不起效
+    // 以下仅在更新授权对象的类型为"匹配模式"时允许传入
+    optional Pattern pattern = 60;       // 匹配模式
+}
+
+message C2S_HolderGetReq_t {
+    Scope scope = 1;    // 授权作用域
+    HolderIdentifier identifier = 10;     // 授权对象标识符
+}
+message S2C_HolderGetRpn_t {
+    string id = 10;        // 授权对象id，id生成器自动生成，与uid、oid共用同一生成器
+    string appId = 11;    // 隶属应用id
+    string instanceId = 12; // 隶属后端服务id
+    string tenantId = 13; // 隶属租户id
+    string name = 21;     // 授权对象名称，可用于查找，同scope下不可重复的唯一标识符
+    int32 type = 22;    // 授权对象类别，1-用户组/2-匹配模式
+    string description = 23; // 授权对象描述
+    bool persist = 24;   // 是否持久化，持久化对象可被长期保存，非持久化对象在被引用次数为0时将被自动删除
+    int32 count = 25;         // 被引用次数
+    int32 status = 26;        // 1-正常，2-停用
+    repeated string users = 31; // 用户集合,类别为用户组时才有本字段
+    optional Pattern pattern = 32;    // 匹配模式,类别为匹配模式时才有本字段
+    google.protobuf.Timestamp createTime = 41;  // 创建时间
+    optional google.protobuf.Timestamp modifyTime = 42;   // 修改时间
+}
+
+message C2S_HolderQueryReq_t {
+    // 查询条件
+    optional string name = 10;      // 授权对象名称, 模糊查询
+    optional string user = 12;      // 用户组授权对象含有的用户, 精确查询
+    optional int32 patternSource = 13;      // 授权对象匹配模式的服务来源 1-用户服务 2-企业服务
+    optional string patternType = 14;      // 授权对象匹配模式的标识符类型, 模糊查询
+    optional string patternIdentifier = 15;      // 授权对象匹配模式的标识符, 模糊查询
+
+    // 过滤条件
+    optional string queryAppId = 20;          // 查询指定授权作用域下的数据-应用id
+    optional string queryInstanceId = 21;   // 查询指定授权作用域下的数据-服务id
+    optional string queryTenantId = 25;   // 查询指定授权作用域下的数据-租户id
+    optional int32 type = 22;        // 授权对象类别，，1->用户组; 2->匹配模式;
+    optional int32 status = 23;        // 授权对象状态，1->正常；2->停用；
+    optional bool onlyPersist = 24;        // 是否仅返回持久化授权对象. false(默认)->返回全部对象;  true->仅返回持久化对象;
+
+    // 分页与排序
+    optional int32 pageNum = 30;  // 页数, 从1开始, 传入0表示查询全部, 不传入时默认为1
+    optional int32 pageSize = 31; // 每页个数，不小于1, 不传入时默认为20
+    optional string sortField = 32;  // 排序字段,支持createTime/modifyTime/id,不传入时默认为createTime
+    optional string sortDir = 33;    // 排序方向,只能为升序asc/降序desc,不传入时默认为降序desc
+
+}
+message S2C_HolderQueryRpn_t {
+    int32 pageNum = 1;
+    int32 pageSize = 2;
+    int32 totalPage = 3;
+    int64 total = 4;
+    repeated S2C_HolderGetRpn_t holders = 5;
+}
+
+message C2S_UserCheckReq_t {
+    Scope scope = 1;    // 授权作用域
+    HolderIdentifier identifier = 10;     // 授权对象标识符
+    // 待检查用户标识符，与 userIdType 对应
+    // 单个用户授权对象、用户组授权对象，直接与存储的值比对，无需传入 userIdType，但传入的标识符必须与授权时的存储值相同
+    // 匹配模式授权对象，必须传入 userIdType, 以便进行模式匹配时向相关周边系统传递准确的用户id
+    string user = 20;
+    optional UserIdType userIdType = 21;      // 用户标识符类型，1-userId,2-employeeId,3-unionId,4-openId
+}
+message S2C_UserCheckRpn_t {
+    bool result = 1;    // 检查结果 true-授权对象包含该用户 false-授权对象不包含该用户
+}
+
+/*******************************************
+                角色管理数据模型
+ *******************************************/
+message C2S_RoleCreateReq_t {
+    Scope scope = 1;    // 授权作用域
+    string name = 10;    // 角色名称，仅支持中英文、数字及符号仅支持中英文、数字及符号/~!_-,最长不超过64字符
+    string description = 20; // 角色描述
+    string tag = 21;    // 角色标签，对角色的进一步分类区分，仅支持中英文、数字及符号/~!_-,最长不超过64字符
+    repeated string privilegeMatches = 30;  // 拥有权限点match列表,不能为空
+}
+message S2C_RoleCreateRpn_t {
+    string id = 10; // 生成的角色id
+}
+
+message C2S_RoleDeleteReq_t {
+    Scope scope = 1;    // 授权作用域
+    string id = 10;   // 角色id
+}
+
+message C2S_RoleUpdateReq_t {
+    Scope scope = 1;    // 授权作用域
+    string id = 10;   // 角色id
+
+    optional string name = 20;          // 名称
+    optional string description = 30;   // 描述,最长不超过100字符
+    optional string tag = 40;           // 标签,最长不超过64字符
+    optional int32 status = 50;         // 状态，1-启用，2-停用
+
+    repeated string privilegeMatches = 60;   // 全量替换权限点。未设置或设置为空数组时不更新privileges字段，要清空权限集合请使用clearPrivileges=true
+    optional bool clearPrivileges = 70;      // 清空权限集合标志位。privilegeMatches优先级高于clearPrivileges，即传入privilegeMatches不为空时，clearPrivileges不起效
+}
+
+message C2S_RolePrivilegeModifyReq_t {
+    Scope scope = 1;    // 授权作用域
+    string id = 10; // 角色id
+    repeated string privilegeMatches = 20; // 新增/移除的权限点内容列表
+}
+
+message C2S_RoleInfoGetReq_t {
+    Scope scope = 1;    // 授权作用域
+    RoleIdentifier roleIdentifier = 10; // 角色标识符，此处只允许传入角色id或name，不支持通过权限点标识角色
+}
+message S2C_RoleInfoGetRpn_t {
+    string id = 10;          // 角色Id
+    string name = 20;        // 角色名称
+    string appId = 30;       // 角色隶属APP
+    string instanceId = 40;  // 角色隶属服务
+    string tenantId = 41;    // 角色隶属租户
+    string description = 50; // 角色描述
+    string tag = 51;         // 角色标签
+    int32 count= 60;         // 被引用次数
+    int32 status= 70;        // 角色状态 1-正常 2-停用
+    repeated string privileges = 80; // 角色自身拥有的全部权限点Match集合
+    repeated string associates = 90; // 角色拥有的正常状态下的所有权限点及其关联权限点Match集合。注意包含角色自身权限点
+    google.protobuf.Timestamp  createTime = 100; // 角色创建时间
+    google.protobuf.Timestamp  modifyTime = 110; // 角色最后修改时间
+}
+
+message C2S_RoleGetByMatchReq_t {
+    Scope scope = 1;    // 授权作用域
+    string privilegeMatch = 10; // 查询包含权限点的角色，传入权限点match字段
+}
+message S2C_RoleGetByMatchRpn_t {
+    repeated string roleIds = 10; // 角色id列表
+}
+
+message C2S_RoleExactGetOrCreateReq_t {
+    Scope scope = 1;    // 授权作用域
+    bool autoCreate = 10; // 对应角色不存在时，是否自动创建
+
+    repeated string privilegeMatches = 20; // 待查询的权限点内容全集，与之完全相同的角色才返回
+
+    optional string name = 30;   // optional, 自动创建角色时的名称，为空时，自动创建角色的名称随机
+    optional string description = 31;    // optional, 自动创建角色时的描述，可以为空
+    optional string tag = 32;    // optional, 自动创建角色时的标签，可以为空
+}
+message S2C_RoleExactGetOrCreateRpn_t {
+    repeated string roleIds = 10; // 角色id列表
+}
+
+message C2S_RoleQueryReq_t {
+    // 查询条件
+    optional string name = 10;      // 角色名称, 模糊查询
+    optional string privilegeId = 11;     // 角色拥有的权限点id, 精确查询
+    optional string tag = 12;       // 角色标签, 精确查询
+
+    // 过滤条件
+    optional string queryAppId = 20;          // 查询指定授权作用域下的数据-应用id
+    optional string queryInstanceId = 21;   // 查询指定授权作用域下的数据-服务id
+    optional string queryTenantId = 23;   // 查询指定授权作用域下的数据-租户id
+    optional int32 status = 22;        // 角色状态，1->正常；2->停用；
+
+    // 分页与排序
+    optional int32 pageNum = 30;  // 页数, 从1开始, 传入0表示查询全部, 不传入时默认为1
+    optional int32 pageSize = 31; // 每页个数，不小于1, 不传入时默认为20
+    optional string sortField = 32;  // 排序字段,支持createTime/modifyTime/id,不传入时默认为createTime
+    optional string sortDir = 33;    // 排序方向,只能为升序asc/降序desc,不传入时默认为降序desc
+}
+message S2C_RoleQueryRpn_t {
+    int32 pageNum = 1;
+    int32 pageSize = 2;
+    int32 totalPage = 3;
+    int64 total = 4;
+    repeated RoleDetail roles = 5;
+}
+
+/*******************************************
+                权限点管理数据模型
+ *******************************************/
+message C2S_PrivilegeCreateReq_t {
+    Scope scope = 1;                        // 授权作用域
+    int32 type = 10;                        // 权限类型 1 - 功能权限; 2 - 页面权限; 3 - 数据权限
+    string match = 20;                      // 权限点内容，权限点的唯一标识符，授权作用域下不能重复，如/user/reg
+    string description = 30;                // 权限点描述
+    repeated string associateMatches = 40;  // 关联权限点内容列表
+}
+message S2C_PrivilegeCreateRpn_t {
+    string id = 10;                         // 生成的权限点id
+}
+
+message C2S_PrivilegeDeleteReq_t {
+    Scope scope = 1;                        // 授权作用域
+    string id = 10;                         // 删除权限点id
+}
+
+message C2S_PrivilegeUpdateReq_t {
+    Scope scope = 1;                        // 授权作用域
+    string id = 10;                         // 更新权限点id
+
+    optional string match = 20;                      // 权限点内容，权限点的唯一标识符，授权作用域下不能重复，如read
+    optional string description = 30;                // 权限点描述
+    repeated string associateMatches = 40;  // 关联权限点内容列表，全量覆盖更新
+    optional int32 status = 50;                      // 权限点状态，1-正常启用，2-停用状态
+
+}
+
+message C2S_PrivilegeGetReq_t {
+    Scope scope = 1;    // 授权作用域
+    string id = 10;     // 权限点id
+}
+message S2C_PrivilegeGetRpn_t {
+    string id = 10;                 // 权限点id
+    string appId = 20;              // 权限点所属应用
+    string instanceId = 30;         // 权限点所属服务
+    string tenantId = 31;           // 权限点所属租户
+    string match = 40;              // 权限内容
+    int32 type = 50;                // 权限类型 1 - 功能权限; 2 - 页面权限; 3 - 数据权限
+    string description = 60;        // 权限描述
+    repeated NanoPrivilege definedAssociates = 70;      // 定义的关联权限，包含全部状态的权限点
+    repeated NanoPrivilege allAssociates = 80;          // 全部关联权限，包含关联权限点的关联权限点，仅包含在正常状态的
+    int32 status = 90;              // 权限状态 1-正常 2-停用
+    int32 count = 100;              // 被引用计数
+    int64 createTime = 110;         // 创建时间
+    int64 modifyTime = 120;         // 修改时间
+}
+
+message C2S_PrivilegeQueryReq_t {
+    // 查询条件
+    optional string match = 10;      // 权限内容, 模糊查询
+    optional string associateId = 11;     // 关联权限点id, 精确查询
+
+    // 过滤条件
+    optional string queryAppId = 20;          // 查询指定授权作用域下的数据-应用id
+    optional string queryInstanceId = 21;   // 查询指定授权作用域下的数据-服务id
+    optional string queryTenantId = 24;   // 查询指定授权作用域下的数据-租户id
+    optional int32 type = 22;        // 权限点类别，1 - 功能权限; 2 - 页面权限; 3 - 数据权限
+    optional int32 status = 23;        // 权限点状态，1->正常；2->停用；
+
+    // 分页与排序
+    optional int32 pageNum = 30;  // 页数, 从1开始, 传入0表示查询全部, 不传入时默认为1
+    optional int32 pageSize = 31; // 每页个数，不小于1, 不传入时默认为20
+    optional string sortField = 32;  // 排序字段,支持createTime/modifyTime/id,不传入时默认为createTime
+    optional string sortDir = 33;    // 排序方向,只能为升序asc/降序desc,不传入时默认为降序desc
+
+}
+message S2C_PrivilegeQueryRpn_t {
+    int32 pageNum = 1;
+    int32 pageSize = 2;
+    int32 totalPage = 3;
+    int64 total = 4;
+    repeated PrivilegeDetail privileges = 5;
+}
+
+message C2S_PrivilegesExistCheckReq_t {
+    Scope scope = 1;    // 授权作用域
+    repeated string matches = 10;     // 权限点match字段集合
+}
+message S2C_PrivilegesExistCheckRpn_t {
+    repeated PrivilegeDetail privileges = 10;  // match存在的权限点集合，仅返回简要信息，包含id,match,type,status字段
+}
+
+/*******************************************
+                访问控制服务数据模型
+ *******************************************/
+message C2S_CheckApiAuthReq_t {
+    string appId = 10;      // 鉴权应用, 不同应用的接口授权相互隔离,用户在不同应用下拥有权限的接口不同
+    // 鉴权用户, 用户Id，与 userIdType 对应
+    // 单个用户授权对象、用户组授权对象，直接与存储的值比对，无需传入 userIdType，但传入的标识符必须与授权时的存储值相同
+    // 匹配模式授权对象，必须传入 userIdType, 以便进行模式匹配时向相关周边系统传递准确的用户id
+    string user = 20;
+    optional UserIdType userIdType = 21;      // 用户标识符类型，1-userId,2-employeeId,3-unionId,4-openId
+    string method = 30;     // 鉴权接口方法, 如POST/GET等，不区分大小写
+    string uri = 40;        // 鉴权接口路径, 如/user/info
+}
+message S2C_CheckApiAuthRpn_t {
+    bool pass = 10;         // 是否允许访问
+}
+
+/*******************************************
+                权限系统内部接口访问控制服务数据模型
+ *******************************************/
+message C2S_XdmAppCreateReq_t {
+    string user = 10;       // 应用创建者employeeId，如果创建应用是在一个单独的应用下，那么创建时的openId与用户使用其所创建的应用的openId是不一样的，如何授权鉴权？目前方法为使用userId?
+    string appId = 20;      // 被创建应用的appId
+}
+
+message C2S_XdmAppActivateReq_t {
+    string user = 10;       // 租户管理员employeeId，启用应用时所在的应用与被启用的应用不是一个，用户在二者下的openId不同，因此这里实际上需要跨应用识别用户，因此使用userId
+    string appId = 20;      // 被启用应用的appId
+    string instanceId = 30; // 被启用应用的instanceId
+    string tenantId = 40;   // 启用应用的tenantId
+}

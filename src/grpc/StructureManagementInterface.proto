@@ -1,0 +1,305 @@
+syntax = "proto3";
+
+package structure;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.structure.lib";
+option java_outer_classname = "StructureManagementProto";
+
+// 服务定义
+service ManagementService {
+    // 创建节点
+    rpc CreateNode(NodeCreateRequest) returns (NodeCreateReply) {}
+    // 更新节点
+    rpc DeleteNode(NodeDeleteRequest) returns (NodeDeleteReply) {}
+    // 删除节点
+    rpc UpdateNode(NodeUpdateRequest) returns (NodeUpdateReply) {}
+    //查询单个节点详情
+    rpc GetNodeById(GetNodeByIdRequest) returns (GetNodeByIdReply) {}
+    //批量获取节点详情
+    rpc BatchGetNode(BatchGetNodeRequest) returns (BatchGetNodeReply) {}
+    // 查询指定节点子节点中，用户拥有权限的节点集合
+    rpc GetNodes(NodeGetRequest) returns (NodeGetReply) {}
+    //Query all the information of the node ID according to the node, including all the permissions of the user on the node and all child data.
+    rpc GetNodeDetails(NodeDetailsGetRequest) returns (NodeDetailsGetReply) {}
+    //Query all child node information of the node ID according to the node, including all the permissions of the user on the node and all child data.
+    rpc GetChildNodeDetails(ChildNodeDetailsGetRequest) returns (ChildNodeDetailsGetReply) {}
+    //分页查询节点
+    rpc QueryNodesByPage(QueryNodesByPageRequest) returns (QueryNodesByPageReply) {}
+    //移动节点数据给其他用户（当前用户不在拥有节点）
+    rpc MoveNodesToUser(C2S_MoveNodesToUserRequest_t) returns (C2S_MoveNodesToUserRnp_t) {}
+}
+
+
+//请求参数
+// 节点创建参数
+message NodeCreateRequest {
+    // 预留存储空间更小的编号给以后可能扩展的字段
+    reserved 12 to 15;
+
+    // 接口调用鉴权
+    string appId = 1;      // 应用ID
+    string openId = 2;     // 用户openId
+    optional string privilege = 3;  // 校验权限 不传入时，将直接执行创建操作
+
+    message NodeCreateParam {
+        // 节点固定属性
+        string parent = 1;  // 父节点id，根节点parent为"0"
+        bool isLeaf = 2;    // 是否为叶节点，叶节点不允许再创建子节点
+        string name = 3;    // 节点名称
+        string type = 4;    // 节点类型
+    // 节点自定义属性，任意json结构
+        optional google.protobuf.Struct attributes = 5;
+    }
+    NodeCreateParam nodeCreateParam = 4;
+
+    message PrivilegeSetting {
+        // 授权参数
+        string roleName = 1;      // 授予角色名称
+        repeated string users = 2;    // 被授权用户openId集合
+    }
+    repeated PrivilegeSetting privilegeSettings = 5;  // 授权参数集合
+}
+
+message NodeCreateReply {
+    string id = 1;      // 节点id
+    string path = 2;    // 节点路径
+    google.protobuf.Timestamp createTime = 3;   // 创建时间
+}
+
+message NodeDeleteRequest {
+    // 接口调用鉴权
+    string appId = 1;      // 应用ID
+    string openId = 2;     // 用户openId
+    string privilege = 3;  // 校验权限
+
+    string nodeId = 4;    // 节点id
+}
+
+message NodeDeleteReply {
+    repeated string nodeIds = 1;  // 删除的节点
+}
+
+message NodeUpdateRequest {
+    // 预留存储空间更小的编号给以后可能扩展的字段
+    reserved 12 to 15;
+
+    // 接口调用鉴权
+    string appId = 1;      // 应用ID
+    string openId = 2;     // 用户openId
+    string privilege = 3;  // 校验权限
+
+    string nodeId = 4;
+
+    message NodeUpdateParam {
+        optional string parent = 1;      // 父节点id，根节点parent为"0"
+        optional string name = 2;           // 节点名称
+        optional string type = 3;             // 节点类型
+        optional string owner = 4;      // 节点所有者
+    // todo 是否需要修改isLeaf属性
+        optional google.protobuf.Struct attributes = 5; // 定义任意json结构
+    }
+
+    NodeUpdateParam nodeUpdateParam = 5;
+}
+
+message GetNodeByIdRequest {
+    // 接口调用鉴权
+    string appId = 1;      // 应用ID
+    string openId = 2;     // 用户openId
+    string privilege = 3;  // 校验权限
+    string nodeId = 4;
+}
+message GetNodeByIdReply {
+    message Node {
+        string id = 1;          // 节点id
+        string parent = 2;      // 父节点id
+        bool isLeaf = 3;        // 是否为叶节点
+        string name = 4;        // 节点名称
+        string type = 5;        // 节点类型
+        string owner = 6;       // 节点所有者
+        string path = 7;        // 节点路径
+        optional google.protobuf.Struct attributes = 8;   // 节点自定义属性
+        int64 createTime = 9;       // 节点创建时间
+        int64 modifyTime = 10;   // 节点修改时间
+        string role = 11;  //角色
+    }
+    Node node = 1;
+}
+message BatchGetNodeRequest {
+    // 接口调用鉴权
+    string appId = 1;      // 应用ID
+    string openId = 2;     // 用户openId
+    string privilege = 3;  // 校验权限
+    repeated string nodeIds = 4;
+    optional int32 depth = 5;
+}
+
+message BatchGetNodeReply {
+    message Node {
+        string id = 1;          // 节点id
+        string parent = 2;      // 父节点id
+        bool isLeaf = 3;        // 是否为叶节点
+        string name = 4;        // 节点名称
+        string type = 5;        // 节点类型
+        string owner = 6;       // 节点所有者
+        string path = 7;        // 节点路径
+        optional google.protobuf.Struct attributes = 8;   // 节点自定义属性
+        int64 createTime = 9;       // 节点创建时间
+        int64 modifyTime = 10;   // 节点修改时间
+        string role = 11;  //角色
+        repeated Node childNodes = 12;
+        string appNodeId = 13;
+    }
+    repeated Node node = 1;
+}
+
+message NodeUpdateReply {
+    google.protobuf.Timestamp modifyTime = 1;   // 修改时间
+}
+
+message NodeGetRequest {
+
+    // 接口调用鉴权
+    string appId = 1;
+    string openId = 2;         // 查询用户
+    string privilege = 3;   // 查询权限
+
+    string nodeId = 4;      // 查询根节点id
+    optional int32 depth = 5;   // 查询深度，不传入时默认为1，传入-1表示全部子节点 todo 不传入时查询全部，
+}
+
+message NodeGetReply {
+    message Node {
+        string id = 1;          // 节点id
+        string parent = 2;      // 父节点id
+        bool isLeaf = 3;        // 是否为叶节点
+        string name = 4;        // 节点名称
+        string type = 5;        // 节点类型
+        string owner = 6;       // 节点所有者
+        string path = 7;        // 节点路径
+        optional google.protobuf.Struct attributes = 8;   // 节点自定义属性
+        int64 createTime = 9;       // 节点创建时间
+        int64 modifyTime = 10;   // 节点修改时间
+    }
+    repeated Node nodes = 1;
+}
+
+message NodeDetailsGetRequest {
+    string appId = 1;
+    string nodeId = 2;
+    string uid = 3;
+    string privilege = 4;
+}
+
+message NodeDetailsGetReply {
+    message NodeDetails {
+        message Node {
+            string id = 1;
+            string parent = 2;
+            bool isLeaf = 3;
+            string name = 4;
+            string type = 5;
+            string owner = 6;
+            string path = 7;
+            optional google.protobuf.Struct attributes = 8;
+            google.protobuf.Timestamp createTime = 9;
+            optional google.protobuf.Timestamp modifyTime = 10;
+        }
+        Node node = 1; // 节点信息
+        repeated Node childNodes = 2; // 子节点
+        repeated string privileges = 3; // 当前用户的权限列表
+    }
+    NodeDetails nodeDetails = 1;
+}
+
+message ChildNodeDetailsGetRequest {
+    string appId = 1;
+    string nodeId = 2;
+    string openId = 3;
+    string privilege = 4;
+    optional int32 depth = 5;
+}
+
+message ChildNodeDetailsGetReply {
+    message NodeDetails {
+        message Node {
+            string id = 1;
+            string parent = 2;
+            bool isLeaf = 3;
+            string name = 4;
+            string type = 5;
+            string owner = 6;
+            string path = 7;
+            optional google.protobuf.Struct attributes = 8;
+            google.protobuf.Timestamp createTime = 9;
+            optional google.protobuf.Timestamp modifyTime = 10;
+        }
+        Node node = 1;
+        repeated Node childNodes = 2;
+        repeated string privileges = 3;
+    }
+    repeated NodeDetails nodeDetails = 1;
+}
+
+message QueryNodesByPageRequest {
+    // 接口调用鉴权
+    string appId = 1;
+    string openId = 2;         // 查询用户
+    string privilege = 3;   // 查询权限
+    bool  deleted = 4;
+    message OrderItem {
+        string key = 1;
+        string order = 2;
+    }
+    string parent = 5;
+    optional int64 skip = 18;    // 跳过数量，不小于0，与分页页码字段page只能择一传入，同时传入时优先使用skip
+    optional int32 page = 6;     // 页数, 从1开始, 与跳过数量字段skip只能择一传入，均不传入时默认设置page=1
+    int32 size = 7;     // 查询数量/分页数量，不传入时默认为20
+    optional google.protobuf.Struct orLikeSearch = 8;
+    optional google.protobuf.Struct andLikeSearch = 9;
+    optional google.protobuf.Struct matchSearch = 10;
+    optional google.protobuf.Struct inSearch = 11;
+    repeated OrderItem orderItems = 12;
+    string type = 13;
+    string owner = 14;
+    bool isReturnRole = 15;
+    optional google.protobuf.Struct orSearch = 16;
+    optional google.protobuf.Struct andSearch = 17;
+}
+
+message QueryNodesByPageReply {
+    message Node {
+        string id = 1;
+        string parent = 2;
+        bool isLeaf = 3;
+        string name = 4;
+        string type = 5;
+        string owner = 6;
+        string path = 7;
+        optional google.protobuf.Struct attributes = 8;
+        int64 createTime = 9;       // 节点创建时间
+        int64 modifyTime = 10;   // 节点修改时间
+        string appNodeId = 11;
+        repeated string roles = 12;
+    }
+    repeated Node nodes = 1;
+    int64 total = 2;
+
+}
+
+message  C2S_MoveNodesToUserRequest_t {
+    string appId = 10;
+    string sourceOpenId = 20; //原用户openId
+    string targetOpenId = 30;//目标用户openId
+    string role = 40;//赋予目标用户的角色
+    string moveMark = 50;//移动标识:用标识被移动的文件
+    repeated string  nodeIds = 60; //需要移动和节点。如不传则移动所有文件
+}
+
+message  C2S_MoveNodesToUserRnp_t {
+
+}

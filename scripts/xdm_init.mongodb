@@ -1,0 +1,21 @@
+// db = connect( 'mongodb://localhost/xdm' );
+// db.auth('root', passwordPrompt())
+
+use('messenger')
+// scenes indexes
+if (db.scenes.exists()) {
+    db.scenes.dropIndex("unique_index")
+}
+db.scenes.createIndex(
+    {categoryId:1, name:1, tenantId:1, instanceId:1, deleteAt:1},
+    {name:"unique_index", unique: true}
+)
+// sceneRelations indexes
+if (db.sceneRelations.exists()) {
+    db.sceneRelations.dropIndex("id_index")
+}
+
+db.sceneRelations.createIndex(
+    {sceneId:1, tenantId:1, instanceId:1, deleteAt:1},
+    {name:"id_index", unique: true}
+)

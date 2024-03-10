@@ -1,0 +1,495 @@
+syntax = "proto3";
+
+package structure;
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.structure.lib";
+option java_outer_classname = "StructureServiceProto";
+option go_package = "./;services";
+
+/**
+    组织结构系统（重构后）
+    注意本文件与旧组织结构服务接口文件有命名冲突，不可同时使用，包括Structure(Management|Authorization)Interface.proto
+ */
+
+/*******************************************
+                节点管理接口
+ *******************************************/
+service NodeService {
+  // 创建节点
+  rpc CreateNode(C2S_NodeCreateReq_t) returns (S2C_NodeCreateRpn_t) {}
+  // 查询指定节点是否存在
+  rpc CheckNodeExist(C2S_NodeExistCheckReq_t) returns (S2C_NodeExistCheckRpn_t) {}
+  // 删除节点
+  rpc DeleteNode(C2S_NodeDeleteReq_t) returns (S2C_NodeDeleteRpn_t) {}
+  // 删除节点
+  rpc BatchDeleteNodes(C2S_NodeBatchDeleteReq_t) returns (S2C_NodeDeleteRpn_t) {}
+  // 更新节点
+  // 节点所有权转移，调用此接口更新owner字段
+  rpc UpdateNode(C2S_NodeUpdateReq_t) returns (google.protobuf.Empty) {}
+  // 获取单个节点详情
+  rpc GetNode(C2S_NodeGetReq_t) returns (S2C_NodeGetRpn_t) {}
+  // 批量获取节点详情
+  rpc BatchGetNodes(C2S_BatchNodesGetReq_t) returns (S2C_BatchNodesGetRpn_t) {}
+  // 获取授权子节点集合
+  rpc GetChildNodes(C2S_ChildNodesGetReq_t) returns (S2C_ChildNodesGetRpn_t) {}
+  // 查询节点，支持条件查询，分页查询
+  rpc QueryNodes(C2S_NodeQueryReq_t) returns (S2C_NodeQueryRpn_t) {}
+  // 查询节点数量，支持条件查询，分页查询
+  rpc CountNodes(C2S_NodeCountReq_t) returns (S2C_NodeCountRpn_t) {}
+  // 获取节点全部授权，返回结果以用户维度区分
+  rpc GetNodeAuthsInUser(C2S_NodeAuthsGetInUserReq_t) returns (S2C_NodeAuthsGetInUserRpn_t) {}
+}
+
+/*******************************************
+                权限检查接口
+ 对节点操作的权限管理已经在节点操作接口中整合，不需单独调用权限接口检查
+ 此服务提供的接口，用于在不涉及节点修改时，专门进行授权检查等权限操作
+ *******************************************/
+service PrivilegeService {
+  // 给定<N, R, U>三元，查询是否被授权
+  rpc CheckAuth(C2S_AuthCheckReq_t) returns (S2C_AuthCheckRpn_t) {}
+  // 给定<N, R, U>三元，查询是否被授权，并返回所有通过鉴权的授权记录的信息
+  // 无缓存，如无获取授权记录信息需求，请优先使用CheckAuth接口
+  rpc CheckAuthWithDetail(C2S_AuthCheckReq_t) returns (S2C_AuthCheckWithDetailRpn_t) {};
+}
+
+/*******************************************
+                权限树信息同步接口
+      仅供权限系统调用，用于在权限系统发生信息更新时同步本地权限树信息
+ *******************************************/
+service PTreeSyncService {
+  // 增加授权通知，传递GrantStatus状态
+  rpc GrantAuth(C2S_AuthGrantReq_t) returns (google.protobuf.Empty) {}
+  // 撤销授权通知，传递RevokeStatus状态
+  rpc RevokeAuth(C2S_AuthRevokeReq_t) returns (google.protobuf.Empty) {}
+}
+
+/*******************************************
+                通用数据模型
+ *******************************************/
+// 数据域参数
+message Scope {
+  string appId = 1;       // 隶属应用
+  string instanceId = 2;  // 隶属实例
+  string tenantId = 3;    // 隶属租户
+  string service = 4;    // 隶属服务
+}
+
+// 鉴权检查参数
+// 可选. 没有鉴权要求时可以不传入
+message AuthCheckParam {
+  string user = 1;        // 操作的用户, 一般为用户oid. 返回节点详情的接口要求包含授权权限点时，需要此字段参与
+  string nodeId = 2;      // 操作的资源, 一般为节点id
+  string privilege = 3;   // 操作要求的权限, 一般为权限点的match字段
+}
+
+// 鉴权检查配置
+// 可选. 没有鉴权配置要求时可以不传入
+message AuthCheckOption {
+  // 鉴权规则启用控制
+  // 可以通过鉴权的规则只有两条：
+  //  规则1. 拥有。鉴权用户为节点owner，鉴权通过
+  //  规则2. 授权。鉴权用户在节点下被授予了鉴权权限，鉴权通过
+  optional bool excludeOwner = 10;  // 是否排除自身拥有的节点，仅返回被授权的节点，默认为false
+  optional bool excludeAuthed = 11; // 是否排除被授权的节点，仅返回自身拥有的节点，默认为false
+
+  optional bool authOverride = 12; // 是否启用授权覆盖规则，即同一角色下，子节点的授权记录是否覆盖父节点的授权记录，默认为false
+
+  // 数据权限鉴权时，是否认为通过鉴权节点的父节点同样可以通过鉴权，默认为true
+  // 操作权限鉴权时，不考虑子节点授权对父节点的影响，因此本选项对操作权限鉴权无效，只在数据鉴权时有意义
+  // 例：资源路径为/a/b/c/d/e, 如果被授权节点仅e，includeParents=true，不限深度查询/c的子节点时，返回列表将为[c,d,e]
+  // 注意：返回的授权节点父节点不包括传入的查询根节点再往上的父节点，因此上例的返回结果中不包含[a,b]
+  optional bool includeParents = 20;
+}
+
+// 授权记录最小信息
+message NanoAuthorization {
+  string id = 10;         // 授权记录id
+  string resource = 20;   // 授权资源
+  string srcDesc = 30;       // 本授权记录中资源的描述
+}
+
+// 授权权限点详情
+message PrivilegeDetail {
+  string privilege = 10; // 授权权限点match
+  string roleId = 20;    // 授权来自的角色id
+  string source = 30;    // 授权来自的节点id
+}
+
+message NodeDetail {
+  string id = 1;                     // 节点id, 一定会返回
+
+  // 节点基本信息 selector包含0x1时返回
+  optional string parent = 10;     // 父节点id
+  optional string name = 11;       // 节点名称
+  optional string type = 12;       // 节点类型
+  optional string owner = 13;      // 节点所有者
+  optional bool isLeaf = 14;       // 是否为叶节点
+  optional int64 createTime = 15;      // 节点创建时间，时间戳
+
+  // 节点自定义属性 selector包含0x2时返回
+  optional google.protobuf.Struct attributes = 20;
+
+  // 节点辅助信息 selector包含0x4时返回
+  optional string appId = 30;           // 数据域-所属应用
+  optional string instanceId = 31;      // 数据域-所属实例
+  optional string tenantId = 34;        // 数据域-所属租户
+  repeated string ancestors = 32;       // 节点的祖先节点列表
+  optional int64 modifyTime = 33;       // 节点修改时间，时间戳
+
+  // 节点权限信息 selector包含0x8时返回
+  repeated PrivilegeDetail privilegeDetails = 40;    // 请求用户在该节点上拥有的全部权限点。返回此信息要求必须传入authParam.user
+}
+
+/*******************************************
+                节点管理数据模型
+ *******************************************/
+// 节点创建参数
+message C2S_NodeCreateReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数(操作鉴权)，其中操作对象应为父节点id，即拥有在该节点下的创建权限
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  // 节点创建信息
+  string parent = 10;     // 父节点id，根节点parent为"0"
+  string name = 20;       // 节点名称
+  string type = 30;       // 节点类型
+  optional bool allowDupName = 40;                // 是否允许同层级下的同类型节点重名, 不传入时默认为false
+  string owner = 50;      // 节点所有者
+  bool isLeaf = 60;       // 是否为叶节点，叶节点不允许再创建子节点
+  optional google.protobuf.Struct attributes = 70;  // 节点自定义属性，任意json结构
+  int32 pMode = 80;        // 权限继承模式，0-继承上级 1-完全覆盖
+  optional string id = 90;       // 自定义节点id，支持格式^([A-Za-z0-9_]*)$，不传入时自动生成
+
+  optional int64 createTime = 100;  // 节点创建时间，除数据迁移等特殊场景外不必传入，依赖自动生成即可
+  optional int64 modifyTime = 101;  // 节点最后修改时间，除数据迁移等特殊场景外不必传入，依赖自动生成即可
+}
+message S2C_NodeCreateRpn_t {
+  string id = 10;          // 节点id
+}
+
+message C2S_NodeExistCheckReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  // 以下条件，每次只能有一个生效，按从上到下顺序检查
+  // 检查指定id节点是否存在
+  optional string id = 10;   // 节点id
+  // 检查同层级下同类型指定名称节点是否已存在，parent、type、name必须同时传入
+  optional string parent = 20; // 父节点
+  optional string type = 30; // 节点类型
+  optional string name = 40; // 节点名称
+}
+
+message S2C_NodeExistCheckRpn_t {
+  bool exist = 10;    // 是否存在
+}
+
+message C2S_NodeDeleteReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数(操作鉴权)
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  string nodeId = 10;     // 待删除节点id，将同步删除其全部子节点
+}
+message S2C_NodeDeleteRpn_t {
+  repeated string nodeIds = 10;  // 被删除的节点集合
+}
+
+message C2S_NodeBatchDeleteReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数(操作鉴权)
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  repeated string nodeId = 10;     // 待删除节点id集合，将同步删除其全部子节点
+}
+
+message C2S_NodeUpdateReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数(操作鉴权)
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  string nodeId = 10;     // 待更新节点id
+
+  optional string parent = 20;      // 父节点id，根节点parent为"0"
+  optional string name = 30;        // 节点名称
+  optional string type = 40;        // 节点类型
+  optional bool allowDupName = 50;  // 是否允许同层级下的同类型节点重名, 不传入时默认为false. parent, name或type任一修改时建议同步显式传入, 修改其它字段时本字段不起作用
+  optional string owner = 60;       // 节点所有者
+  optional google.protobuf.Struct attributes = 70; // 节点自定义属性
+  int32 pMode = 80;        // 权限继承模式，0-继承上级 1-完全覆盖，默认值为0
+}
+
+message C2S_NodeGetReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  // 数据鉴权检查参数authParam说明
+  // 1. 作为获取数据类接口，鉴权检查均为数据鉴权。影响的不是能否操作, 而是返回数据的范围。
+  //    效果：用户在nodeId上被授权时才会返回，未被授权时抛出异常
+  // 2. authParam.nodeId数据鉴权中不起作用，从nodeId参数中获取被鉴权资源。
+  // 3. 如果不需要鉴权，但需要返回节点的授权信息，可以连privilege也不传入，仅传入user
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数(数据鉴权)
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  string nodeId = 10;     // 待获取节点id
+  // 返回信息过滤器, 传入0x0时默认包含节点id, 0xFFFF返回全部信息. 各标志位按位组合,分别表示:
+  // 0x1 节点基本信息
+  // 0x2 节点自定义信息
+  // 0x4 节点辅助信息
+  // 0x8 节点授权信息，即该节点下，授予请求用户的全部权限点。返回此信息要求必须传入authParam.user
+  int32 selector = 11;
+}
+message S2C_NodeGetRpn_t {
+  bool authPassed = 1;
+  optional NodeDetail node = 2;
+}
+
+message C2S_BatchNodesGetReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  // 数据鉴权检查参数authParam说明
+  // 1. 作为获取数据类接口，鉴权检查均为数据鉴权。影响的不是能否操作, 而是返回数据的范围。
+  //    效果：仅返回nodeIds中用户被授权的节点
+  // 2. authParam.nodeId数据鉴权中不起作用，从nodeIds参数中获取被鉴权资源。
+  // 3. 如果不需要鉴权，但需要返回节点的授权信息，可以连privilege也不传入，仅传入user
+  // 注意:GetBatchNodes接口暂无数据鉴权需求，返回结果不会过滤筛选用户被授权的，本接口鉴权参数authParam、authOption不起作用
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数(数据鉴权)
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  repeated string nodeIds = 10; // 查询节点id集合
+  // 返回信息过滤器, 传入0x0时默认包含节点id, 0xFFFF返回全部信息. 各标志位按位组合,分别表示:
+  // 0x1 节点基本信息
+  // 0x2 节点自定义信息
+  // 0x4 节点辅助信息
+  // 0x8 节点授权信息，即该节点下，授予请求用户的全部权限点。返回此信息要求必须传入authParam.user
+  int32 selector = 11;
+}
+message S2C_BatchNodesGetRpn_t {
+  repeated NodeDetail nodes = 10; // 返回结果不包括nodeIds的父节点
+}
+
+message C2S_ChildNodesGetReq_t {
+  Scope scope = 1;        // 既是数据作用域(操作此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  // 数据鉴权检查参数authParam说明
+  // 1. 作为获取数据类接口，鉴权检查均为数据鉴权。影响的不是能否操作, 而是返回数据的范围。
+  //    效果：仅返回子节点中用户被授权的节点，不传入时将返回查询到的全部节点
+  // 2. authParam.nodeId数据鉴权中不起作用，从子节点列表中直接获取被鉴权资源。
+  // 3. 如果不需要鉴权，但需要返回节点的授权信息，可以连privilege也不传入，仅传入user
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  string root = 10;      // 查询根节点id
+  // 返回信息过滤器, 传入0x0时默认包含节点id, 0xFFFF返回全部信息. 各标志位按位组合,分别表示:
+  // 0x1 节点基本信息
+  // 0x2 节点自定义信息
+  // 0x4 节点辅助信息
+  // 0x8 节点授权信息，即该节点下，授予请求用户的全部权限点。返回此信息要求必须传入authParam.user
+  int32 selector = 20;
+
+  optional int32 depth = 30;   // 查询深度，不传入时默认为0,查询全部子节点，传入1时表传入下一层子节点
+
+  // 过滤条件
+  optional string type = 40;          // 过滤指定节点类型
+
+  // 自定义查询语句，支持不同逻辑运算子句的组合，此处的各CustomLogicQuery语句将统一使用and连接
+  // 注意自定义逻辑运算子句的组合需满足Mongo Api的限制，如and/or/nor每种最多只能出现一次
+  repeated CustomLogicQuery customQueries = 50;
+}
+// 返回的列表包括传入的查询根节点本身
+message S2C_ChildNodesGetRpn_t {
+  repeated NodeDetail nodes = 10;
+}
+
+// 自定义查询子句clauses
+message CustomQueryClause{
+  string cmd = 10;                        // 使用的查询命令，支持is/ne/like/in/nin
+  string field = 20;                      // 查询字段，对自定义属性的field查询记得添加 "attributes." 前缀
+  string valueType = 50;                  // 查询参数的值类型，支持string/int/float/long/boolean，不传入时默认为string
+
+  // 以下为各查询命令需要的查询参数，不要求全部传入，与相应的查询命令对应传入即可
+  optional string soleValue = 30;         // is/ne/like条件的查询参数,structure2将自动在like参数前后添加通配符
+  repeated string listValues = 40;         // in/nin条件的可选值范围
+}
+// 自定义逻辑查询子句，在clauses基础上支持逻辑运算
+message CustomLogicQuery {
+  string operator = 1;                    // 逻辑运算符，本算子中的所有子句将根据此运算符合成，支持and/or/nor
+  repeated CustomQueryClause clauses = 2;
+}
+
+message C2S_NodeQueryReq_t {
+  Scope scope = 1;        // 既是数据作用域(查询此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  // 数据鉴权检查参数authParam说明
+  // 1. 作为获取数据类接口，鉴权检查均为数据鉴权。影响的不是能否操作, 而是返回数据的范围。
+  //    效果：仅返回满足条件的节点中用户被授权的节点
+  // 2. authParam.nodeId数据鉴权中不起作用，从节点查询列表中直接获取被鉴权资源。
+  // 3. 如果不需要鉴权，但需要返回节点的授权信息，可以连privilege也不传入，仅传入user
+  // 注意:QueryNodes接口暂无数据鉴权需求，返回结果不会过滤筛选用户被授权的，本接口鉴权参数authParam、authOption不起作用
+  optional AuthCheckParam authParam = 2;          // 鉴权检查参数
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置
+
+  // 返回信息过滤器, 传入0x0时默认包含节点id, 0xFFFF返回全部信息. 各标志位按位组合,分别表示:
+  // 0x1 节点基本信息
+  // 0x2 节点自定义信息
+  // 0x4 节点辅助信息
+  // 0x8 节点授权信息，即该节点下，授予请求用户的全部权限点。返回此信息要求必须传入authParam.user及scope
+  int32 selector = 10;
+
+  // 查询条件
+  optional string name = 20;      // 节点名称, 模糊查询
+  optional string owner = 21;     // 节点所有者, 精确查询
+
+  // 过滤条件
+  optional bool isLeaf = 30;          // 过滤是否为叶节点
+  optional string type = 31;          // 过滤指定节点类型
+  optional string parent = 32;        // 过滤指定父节点
+  optional string ancestor = 33;      // 过滤指定祖先节点
+  optional int32 pMode = 34;          // 权限继承模式, 0-继承上级，1-完全覆盖
+  optional int32 createTimeDir = 35;  // 创建时间过滤条件, 1-小于传入时间, 2-小于等于传入时间, 3-大于传入时间, 4-大于等于传入时间, 5-等于传入时间
+  optional int64 createTime = 36;     // 创建时间,时间戳
+  optional int32 modifyTimeDir = 37;  // 修改时间过滤条件, 1-小于传入时间, 2-小于等于传入时间, 3-大于传入时间, 4-大于等于传入时间, 5-等于传入时间
+  optional int64 modifyTime = 38;     // 修改时间,时间戳
+//  optional string queryAppId = 39;         // 过滤指定appId下的节点，不传入时取scope中的appId，目前不支持查询与鉴权取不同scope能力
+//  optional string queryInstanceId = 40;    // 过滤指定instanceId下的节点，不传入时取scope中的instanceId，目前不支持查询与鉴权取不同scope能力
+//  optional string queryTenantId = 41;      // 过滤指定tenantId下的节点，不传入时取scope中的tenantId，目前不支持查询与鉴权取不同scope能力
+
+  // 分页
+  optional int64 skip = 54;     // 跳过数量，不小于0，与分页页码字段pageNum只能择一传入，同时传入时优先使用skip
+  optional int32 pageNum = 50;  // 页数, 从1开始, 传入0表示查询全部，与跳过数量字段skip只能择一传入，均不传入时默认设置pageNum=1
+
+  optional int32 pageSize = 51; // 每页个数，不小于1, 不传入时默认为20
+
+  // 排序
+  optional string sortField = 52;  // 排序字段,不传入时默认为id,字段名称请参见数据库定义
+  optional string sortDir = 53;    // 排序方向,只能为升序asc/降序desc,不传入时默认为升序asc
+
+  // 自定义查询语句，支持不同逻辑运算子句的组合，此处的各CustomLogicQuery语句将统一使用and连接
+  // 注意自定义逻辑运算子句的组合需满足Mongo Api的限制，如and/or/nor每种最多只能出现一次
+  repeated CustomLogicQuery customQueries = 61;
+}
+message S2C_NodeQueryRpn_t {
+  int32 pageNum = 1;    // 当前页数，与skip择一传回
+  int64 skip = 6;       // 跳过数量，与pageNum择一传回
+  int32 pageSize = 2;   // 每页数量
+  int32 totalPage = 3;  // 总页数
+  int64 total = 4;      // 总记录数
+  repeated NodeDetail nodes = 5;
+}
+
+
+message C2S_NodeCountReq_t {
+  Scope scope = 1;        // 既是数据作用域(查询此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+
+  // 查询条件
+  optional string name = 20;      // 节点名称, 模糊查询
+  optional string owner = 21;     // 节点所有者, 精确查询
+  optional bool isLeaf = 30;          // 过滤是否为叶节点
+  optional string type = 31;          // 过滤指定节点类型
+  optional string parent = 32;        // 过滤指定父节点
+  optional string ancestor = 33;      // 过滤指定祖先节点
+  optional int32 pMode = 34;          // 权限继承模式, 0-继承上级，1-完全覆盖
+  optional int32 createTimeDir = 35;  // 创建时间过滤条件, 1-小于传入时间, 2-小于等于传入时间, 3-大于传入时间, 4-大于等于传入时间, 5-等于传入时间
+  optional int64 createTime = 36;     // 创建时间,时间戳
+  optional int32 modifyTimeDir = 37;  // 修改时间过滤条件, 1-小于传入时间, 2-小于等于传入时间, 3-大于传入时间, 4-大于等于传入时间, 5-等于传入时间
+  optional int64 modifyTime = 38;     // 修改时间,时间戳
+  //  optional string queryAppId = 39;         // 过滤指定appId下的节点，不传入时取scope中的appId，目前不支持查询与鉴权取不同scope能力
+  //  optional string queryInstanceId = 40;    // 过滤指定instanceId下的节点，不传入时取scope中的instanceId，目前不支持查询与鉴权取不同scope能力
+  //  optional string queryTenantId = 41;      // 过滤指定tenantId下的节点，不传入时取scope中的tenantId，目前不支持查询与鉴权取不同scope能力
+
+  // 自定义查询语句，支持不同逻辑运算子句的组合，此处的各CustomLogicQuery语句将统一使用and连接
+  // 注意自定义逻辑运算子句的组合需满足Mongo Api的限制，如and/or/nor每种最多只能出现一次
+  repeated CustomLogicQuery customQueries = 61;
+}
+
+message S2C_NodeCountRpn_t {
+  int64 count = 10;      // 符合条件的节点数量
+}
+
+message C2S_NodeAuthsGetInUserReq_t {
+  Scope scope = 1;        // 既是数据作用域(查询此范围下的节点),也是鉴权作用域(在此范围下进行权限检查)
+  optional AuthCheckOption authOption = 2;        // 鉴权检查配置，受限于本接口功能逻辑，仅authOverride起效
+
+  string nodeId = 10; // 查询节点id
+}
+message S2C_NodeAuthsGetInUserRpn_t {
+  // 被授权角色详情
+  message RoleDetail {
+    string roleId = 10; // 角色id
+    string source = 20; // 授权来源节点id
+  }
+  // 用户的全部被授权角色集合
+  message UserAuths {
+    repeated RoleDetail roleDetails = 10;
+  }
+
+  // 匹配模式授权对象
+  message Pattern {
+    int32 source = 1;  // 来源服务，权限系统使用，决定要向哪个系统验证信息，当前仅限 1-用户服务 2-企业服务
+    string type = 2;    // 标识符类型，周边系统自行使用，标识identifier对象的类型，如"group_id"
+    string identifier = 3;  // 对象标识符，周边系统自行使用，标识本授权对象所描述的用户范围，如"gp_123456"
+  }
+
+  // 授权对象详情
+  message HolderDetail {
+    string id = 10;         // 授权对象id
+    string name = 20;       // 授权对象名称
+    int32 type = 30;        // 授权对象类别，0-单个用户，1-用户组，2-匹配模式
+    bool persist = 40;      // 是否为持久化授权对象，true-持久化授权对象，false-临时授权对象
+    int32 status = 50;      // 授权对象状态 1-正常 2-停用
+    string user = 60;               // 用户，授权对象类别为单个用户时才有本字段
+    repeated string users = 70;     // 用户集合，授权对象类别为用户组时才有本字段
+    Pattern pattern = 80;            // 匹配模式,授权对象类别为匹配模式时才有本字段
+  }
+  map<string, UserAuths> holderAuths = 10; // 节点的授权（以用户维度划分） 授权对象id->被授权角色详情
+  map<string, HolderDetail> holderDetails = 20; // 授权对象的详情 授权对象id->授权对象详情
+}
+
+
+/*******************************************
+                权限检查服务数据模型
+ *******************************************/
+message C2S_AuthCheckReq_t {
+  Scope scope = 1;        // 权限检查作用域
+  AuthCheckParam authParam = 2;          // 鉴权检查参数，必须传入
+  optional AuthCheckOption authOption = 3;        // 鉴权检查配置，可选参数，不传入时取默认配置
+}
+message S2C_AuthCheckRpn_t {
+  bool pass = 1;          // 鉴权是否通过
+}
+
+message S2C_AuthCheckWithDetailRpn_t {
+  bool pass = 10;         // 鉴权是否通过 true - 鉴权通过 false - 鉴权不通过
+  repeated NanoAuthorization authInfos = 20; // 鉴权通过的授权记录详情, pass为false时本字段为空
+}
+
+/*******************************************
+                权限树信息同步数据模型
+ *******************************************/
+message C2S_AuthGrantReq_t {
+  Scope scope = 1;        // 数据作用域
+
+  string resource = 10;  // 授权资源
+  string roleId = 20;    // 授权角色id
+
+  bool success = 30; // 授权成功状态
+  bool hasNewAuth = 40; // 授权过程中是否有新生成的授权记录
+  optional string newAuthId = 50; // 新生成的授权记录Id。hasNew为false时，本字段为null
+  optional string newHolderId = 60; // 新授权的授权对象id（单个用户时直接为用户id）
+}
+
+message C2S_AuthRevokeReq_t {
+  Scope scope = 1;        // 数据作用域
+
+  string resource = 10;  // 授权资源
+  string roleId = 20;    // 授权角色id
+
+  bool success = 30; // 撤销授权成功状态
+  bool hasNewAuth = 40; // 撤销授权过程中是否有新生成的授权记录
+  bool hasDeleteAuth = 50;  // 默认为false // 撤销授权过程中是否删除了已有授权记录
+  // 在将已有授权对象合并为临时授权对象时可能会生成新的授权记录。最多只会有一条新记录生成
+  optional string newAuthId = 60; // 新生成的授权记录Id。hasNew为false时，本字段为null。
+  optional string newHolderId = 61; // 新授权的授权对象id（单个用户时直接为用户id）。hasNew为false时，本字段为null。
+
+  // 单次撤销可能有多条授权记录被删除
+  repeated string deleteAuthIds = 70; // 被删除的授权记录Id集合。hasDelete为false时，本字段为空。
+  repeated string deleteHolderIds = 71; // 被删除的授权对象Id。hasDelete为false时，本字段为空。
+}

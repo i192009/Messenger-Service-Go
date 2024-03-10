@@ -1,0 +1,8 @@
+[submodule "framework"]
+	path = framework
+	url = https://gomodules:gMyrcKGsvSHXW3mzM-sJ@gitlab.zixel.cn/go/framework.git
+	branch = dev
+[submodule "src/grpc"]
+	path = src/grpc
+	url = https://submodule:ssu3suP-yimr6NbUX-P6@gitlab.zixel.cn/z-jumeaux-engine/services/framework/grpc.git
+	branch = dev

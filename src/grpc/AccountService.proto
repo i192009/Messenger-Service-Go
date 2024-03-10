@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package account;
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.account.lib";
+option java_outer_classname = "AccountServiceProto";
+option go_package = "./;services";
+
+service AccountService {
+  // ticket登录
+  rpc LoginByTicket(LoginByTicketRequest) returns (UserLoginReply) {}
+
+  // 根据账户名/手机号/邮箱查询账户
+  rpc GetAccount(GetAccountRequest) returns (GetAccountReply) {}
+
+  // 根据账户名/手机号/邮箱查询账户，并根据参数修改账户信息
+  rpc GetOrCreateAccount(C2S_GetOrCreateAccount_Req) returns (S2C_GetAccount_Rpn) {}
+
+  // 条件查询账户列表
+  rpc QueryAccounts(C2S_AccountQuery_Req) returns (S2C_Accounts_Rpn) {}
+
+  // 预埋未注册账户回调
+  // 预埋成功时返回邀请码
+  // 注册账户登录时携带邀请码，将触发对应回调事件
+  // 回调时将在body中向回调地址返回账户基本信息
+  rpc SetRegisterCallback(RegCallbackRequest) returns (RegCallbackReply) {}
+}
+
+message LoginByTicketRequest{
+  message TicketLoginParam{
+    string account = 1; // 仅source为jumeaux时需要
+    string ticket = 2;
+    string source = 3;
+  }
+  TicketLoginParam loginParam = 1;
+  string appId = 2;
+  string platform = 3;
+  string tenantId = 4;
+}
+
+message UserLoginReply{
+  string openId = 1;
+  string token = 2;
+  bool isFirstTime = 3;
+  string uid = 5;
+  // 第三方账户信息
+  map<string, string> thirdPartyInfo = 4;
+}
+
+// 账号信息详情
+message AccountInfoGDto { // G表示Grpc中定义的Dto
+  int64 id = 10;
+  optional string uid = 11;
+  string account = 12;  // 账号名
+  optional string phoneNumber = 13;
+  optional string email = 14;
+  optional string note = 15;
+  int32 status = 16;
+  optional string questions = 17;
+  google.protobuf.Timestamp createTime = 18;
+  optional google.protobuf.Timestamp loginTime = 19;
+  optional google.protobuf.Timestamp deprecateTime = 20;
+}
+
+message GetAccountRequest {
+  // 获取信息类别
+  // 0x0-不传入时的默认值,兼容旧接口仅返回uid字段。该值已被废弃,新增使用不应传入0x0
+  // 0x1-uid，返回uid信息(位于accountInfo.uid字段)
+  // 0x7FFFFFFF-返回全部信息,对应十进制为2147483647
+  optional int32 infoSelector = 1;
+
+  // 查询参数
+  // 获取方式 1-手机号 2-邮箱 3-账号名
+  // 因手机号/邮箱/账号名登录已融合，此参数可不传入，查询时param参数将在三个字段均搜索
+  int32 type = 10;
+  string param = 11;       // 查询参数 与type对应，账号名/手机号/邮箱
+}
+
+message C2S_GetOrCreateAccount_Req {
+  // 获取信息类别
+  // 0x1-uid，返回uid信息(位于accountInfo.uid字段)
+  // 0x7FFFFFFF-返回全部信息,对应十进制为2147483647
+  int32 infoSelector = 1;
+
+  // 查询参数
+  // 获取方式 1-手机号 2-邮箱 3-账号名
+  // 因手机号/邮箱/账号名登录已融合，此参数可不传入，查询时param参数将在三个字段均搜索
+  int32 type = 10;
+  string param = 11;       // 查询参数 与type对应，账号名/手机号/邮箱
+
+  // 后置动作
+  optional bool generateUid = 20;  // 是否自动对uid为空的账号生成uid，不传入时默认为false
+}
+
+message GetAccountReply {
+  bool exist = 10;    // 账号是否存在
+
+  // 以下为账号基本信息，在账号存在时返回
+  string uid = 11;    // 账号对应用户的uid，@Deprecated 兼容老接口保留字段11，后续将废弃，请使用accountInfo.uid
+  AccountInfoGDto accountInfo = 20; // 账号信息详情
+}
+
+message S2C_GetAccount_Rpn {
+  bool exist = 10;    // 账号是否存在
+
+  // 以下为账号信息，在账号存在时返回
+  AccountInfoGDto accountInfo = 20; // 账号信息详情
+}
+
+// 账号查询参数
+message C2S_AccountQuery_Req {
+  // 过滤返回信息类别
+  // 0x1 - 返回uid
+  // 0x7FFFFFFF - 返回全部账户信息,对应十进制为2147483647
+  int32 infoSelector = 1;
+
+  // 查询字段
+  string accountName = 10;  // 账户名
+  string phone = 11;  // 手机
+  string email = 12;  // 邮箱
+  // 过滤字段
+  int32 status = 20;  // 账号状态 0->禁用；1->启用；2->注销
+  // 分页
+  int32 pageNum = 30; // 不传入时默认为1，传入-1表示获取全部
+  int32 pageSize = 31;  // 不传入时默认为20
+  // 排序
+  string sortField = 40;
+  string sortDir = 41; // asc-增序，desc-降序
+}
+
+// 账号列表
+message S2C_Accounts_Rpn {
+  int32 pageNum = 10;   // 当前页数
+  int32 pageSize = 11;  // 每页数量
+  int32 totalPage = 12; // 总页数
+  int64 total = 13;     // 总数量
+  repeated AccountInfoGDto accounts = 14; // 账号详情数据
+}
+
+// 为未注册账号存储回调信息
+message RegCallbackRequest {
+  // 触发回调的账号信息——仅用作比对检查用，不作为触发判断条件
+  int32 type = 10;         // 识别账号的字段类型 1-手机号 2-邮箱
+  string identifier = 11;   // 账号的标识 手机号/邮箱
+
+  // 回调参数
+  string url = 20;
+}
+
+message RegCallbackReply {
+  // 邀请码
+  string inviteCode = 10;
+}
+

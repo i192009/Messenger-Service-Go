@@ -1,0 +1,41 @@
+syntax = "proto3";
+package streaming;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.streaming.agent.lib";
+option java_outer_classname = "StreamingAgentServiceProto";
+option go_package = "./;services";
+
+// 节点相关服务
+service StreamingAgentNodeService {
+    // 设备状态
+    rpc status(google.protobuf.Value) returns (google.protobuf.Empty) {}
+}
+
+
+service StreamingAgentAppService {
+  // 应用启动
+  rpc start(StartReq) returns (google.protobuf.Empty) {}
+  // 应用停止
+  rpc stop(StopReq) returns (google.protobuf.Empty) {}
+}
+
+message StartReq {
+  string taskId = 1;
+  string nodeCode = 2;
+  string instanceId = 3;
+  string appId = 4;
+  optional string extParams = 10;
+}
+
+message StopReq {
+  string taskId = 1;
+  string nodeCode = 2;
+  string instanceId = 3;
+}
+
+
+

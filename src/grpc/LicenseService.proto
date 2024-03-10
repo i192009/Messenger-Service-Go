@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.license.lib";
+option java_outer_classname = "LicenseServiceProto";
+option go_package = "./;services";
+
+service RightsConfigurationSerivce{
+    // 创建权益模板
+    rpc NewRightsTemplate(RightsTemplate) returns (CommonResponse){}
+    // 查询权益模板
+    rpc QueryRightsTemplate(QueryRightsTemplateRequest) returns (QueryRightsTemplateResponse){}
+    // 创建权益配置
+    rpc NewRightsConfiguration(RightsConfiguration) returns (CommonResponse){}
+    // 查询权益配置
+    rpc QueryRightsConfiguration(QueryRightsConfigurationRequest) returns (QueryRightsConfigurationResponse){}
+}
+
+service SerialNumberSerivce{
+    // 创建序列号
+    rpc GenSerialNumbers(GenSerialNumbersRequest) returns (GenSerialNumbersResponse){}
+    // 查询序列号
+    rpc QuerySerialNumbers(QuerySerialNumberRequest) returns (QuerySerialNumberResponse){}
+}
+
+service LicenseSerivce{
+    // 签发证书
+    rpc GenLicense(GenLicenseRequest) returns (GenLicenseResponse){}
+    // 更新证书token
+    rpc UpdateToken(UpdateTokenRequest) returns (UpdateTokenResponse){}
+}
+
+service HashFileSerivce{
+    // 获取hash文件
+    rpc GetHashFiles(GetHashFileRequest) returns (GetHashFileResponse){}
+    // 新增hash文件
+    rpc AddHashFile(AddHashFileRequest) returns (CommonResponse){}
+}
+
+service AppConfigSerivce{
+    // 批量加密应用配置
+    rpc EncryptAppConfig(EncryptConfigRequest) returns (EncryptConfigResponse){}
+    // 批量解密应用配置
+    rpc DecryptAppConfig(DecryptConfigRequest) returns (DecryptConfigResponse){}
+}
+
+message QueryRightsTemplateResponse{
+    repeated RightsTemplate data = 1;
+    PageResponse page = 2;
+}
+
+message QueryRightsConfigurationResponse{
+    repeated RightsConfiguration data = 1;
+    PageResponse page = 2;
+}
+
+message QueryRightsTemplateRequest{
+    uint64 appId = 1;
+    string version = 2;
+    PageRequest page = 3;
+}
+
+message EncryptConfigRequest{
+    repeated File files = 1;
+}
+
+message EncryptConfigResponse{
+    map<string, string> data = 1;
+}
+
+message DecryptConfigRequest{
+    repeated File files = 1;
+}
+
+message DecryptConfigResponse{
+    map<string, string> data = 1;
+}
+
+message File{
+    string name = 1;
+    string content = 2;
+}
+
+message GetHashFileRequest{
+    uint64 appId = 1;
+    string sn = 2;
+}
+
+message GetHashFileResponse{
+    uint64 appId = 1;
+    string sn = 2;
+    repeated HashFile files = 3;
+}
+
+message HashFile{
+    string path = 1;
+    string hash = 2;
+}
+
+message AddHashFileRequest{
+    uint64 appId = 1;
+    string version = 2;
+    string path = 3;
+    string hash = 4;
+}
+
+message GenLicenseRequest{
+    string sn = 1;
+    string vc = 2;
+}
+
+message UpdateTokenRequest{
+    string sn = 1;
+    string vc = 2;
+}
+
+message GenLicenseResponse{
+    string privateKey = 1;
+    string noise = 2;
+    string token = 3;
+}
+
+message UpdateTokenResponse{
+    string token = 1;
+}
+
+message GenSerialNumbersRequest{
+    uint64 appId = 1;
+    string version = 2;
+    int32 count = 3;
+    string for = 4;
+    string expireAt = 5;
+}
+
+message QuerySerialNumberRequest{
+    uint64 appId = 1;
+    string version = 2;
+    string for = 3;
+    string expireFrom = 4;
+    string expireTo = 5;
+    PageRequest page = 7;
+}
+
+message QuerySerialNumberResponse{
+    repeated SerialNumber data = 1;
+    PageResponse page = 2;
+}
+
+message SerialNumber{
+    uint64 appId = 1;
+    string version = 2;
+    string for = 4;
+    string sn = 3;
+    string expireAt = 5;
+    string createAt = 6;
+    bool activated = 7;
+}
+
+message GenSerialNumbersResponse{
+    int32 count = 1;
+    string for = 2;
+    string expireAt = 3;
+    repeated string sn = 4;
+}
+
+message QueryRightsConfigurationRequest{
+    uint64 appId = 1;
+    string version = 2;
+    PageRequest page = 3;
+}
+
+message RightsConfiguration{
+    uint64 appId = 1;
+    string version = 2;
+    string name = 3;
+    map<string, string> configuration = 4;
+}
+
+message RightsTemplate{
+    uint64 appId = 1;
+    string version = 2;
+    map<string, string> configuration = 3;
+}
+
+message PageRequest{
+    int64 page = 1;
+    int64 size = 2;
+}
+
+message PageResponse{
+    int64 total = 1;
+    int64 page = 2;
+    int64 size = 3;
+}
+
+message CommonResponse{
+    bool success = 1;
+    string code = 2;
+    string message = 3;
+}

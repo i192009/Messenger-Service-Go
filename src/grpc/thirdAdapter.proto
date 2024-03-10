@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package="com.zixel.third";
+option go_package = "./;services";
+
+
+message DingtalkTokenReq {
+    string suiteId = 1;
+    string corpId = 2;
+}
+
+message DingtalkTokenRes {
+//  SUCCESS(1,"success"), FAIL(0,"fail");
+    int64 code = 1;
+    string msg = 2;
+    string corpToken = 3;
+}
+
+
+message UserInitRes {
+//  SUCCESS(1,"success"), FAIL(0,"fail");
+    int64 code = 1;
+    string msg = 2;
+    string userListJson = 3;
+}
+
+message UserInitReq {
+    string corpId = 1;
+    //飞书 appid ，钉钉 suiteId
+    string suiteId = 2;
+    string from = 3;
+}
+
+message FeishuTokenReq {
+    string suiteId = 1;
+    //自建应用传空字符串，或者商场应用app_access_token可不传
+    string corpId = 2;
+    //区分获取 tenant_access_token / app_access_token  不传 默认取tenant_access_token
+    string type = 3;
+}
+
+message FeishuTokenRes {
+//  SUCCESS(1,"success"), FAIL(0,"fail");
+    int64 code = 1;
+    string msg = 2;
+    string corpToken = 3;
+}
+
+service ThirdAdapterServer {
+     // 获取钉钉token
+    rpc GetDingtalkToken (DingtalkTokenReq) returns (DingtalkTokenRes);
+     // 首次启用获取第三方企业用户信息
+    rpc ThreePartUserInit (UserInitReq) returns (stream UserInitRes);
+     // 获取飞书token  如果不传corpId就是获取app_access_token
+    rpc GetFeiShuToken (FeishuTokenReq) returns (FeishuTokenRes);
+}
+
+
+
+service HuaweiClientServer {
+     // 获取client_secret 等信息
+    rpc GetHuaweiClientInfo (HuaweiClientReq) returns (HuaweiClientRes);
+}
+
+
+message HuaweiClientReq {
+    //appid
+    string suiteId = 1;
+    //企业id
+    string corpId = 2;
+}
+
+message HuaweiClientRes {
+//  SUCCESS(1,"success"), FAIL(0,"fail");
+    int64 code = 1;
+    string msg = 2;
+    string clientId = 3;
+    string clientSecret = 4;
+    string domainName = 5;
+}

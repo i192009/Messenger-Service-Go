@@ -1,0 +1,49 @@
+syntax = "proto3";
+package operationLogService;
+
+option java_multiple_files = true;
+option java_package = "com.zixel.klog";
+option go_package = "./;services";
+
+service OperationLogServer {
+  rpc QueryOperationLog(QueryOperationLogReq) returns (QueryOperationLogRsp) {}
+}
+
+message QueryOperationLogReq {
+  optional string projectCode = 10;
+  optional string serviceCode = 20;
+  optional string userId = 30;
+  optional string requestId = 40;
+  optional string operateLevel = 50;
+  optional string OperateType = 60;
+  optional int32 page = 70;
+  optional int32 pageSize = 80;
+  optional string startTime = 90;
+  optional string endTime = 100;
+  optional string OperateSubType = 110;
+}
+
+message QueryOperationLogRsp {
+
+  int32 code = 10;
+  string codeMessage = 20;
+  repeated OperationLog list = 30;
+  int64  total = 40;
+}
+
+message OperationLog {
+  string projectCode = 1;
+  string serviceCode = 2;
+  string userId = 3;
+  string requestId = 4;
+  string operateLevel = 5;
+  string operateType = 6;
+  string message = 7;
+  string operateTime = 8;
+  int64 operateOrder = 9;
+  string deviceId = 10;
+  string ip = 11;
+  string operateSubType = 12;
+  string content = 13;
+}
+

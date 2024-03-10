@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package storage2;
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.storage2.lib";
+option java_outer_classname = "StorageServiceProto";
+option go_package = "./;services";
+// 文件管理服务定义
+service StorageService {
+
+  // 创建文件元数据
+  rpc CreateMetadata(C2S_CreateMetadataReq_t) returns (C2S_CreateMetadataRpn_t) {}
+
+  // 删除文件元数据
+  rpc DeleteMetadata(C2S_DeleteMetadataReq_t) returns (C2S_DeleteMetadataRpn_t) {}
+
+  // 获取上传文件的url
+  rpc GetUploadFileUrl(C2S_GetUploadFileUrlReq_t) returns (C2S_GetUploadFileUrlRpn_t) {}
+
+  // 批量删除对象
+  rpc DeleteObjects(C2S_DeleteObjectsReq_t) returns (C2S_DeleteObjectsRpn_t){}
+
+  // 预处理
+  rpc PreHandle(C2S_PreHandleReq_t) returns (C2S_PreHandleRpn_t){}
+
+  // 根据token处理
+  rpc HandleByToken(C2S_HandleByTokenReq_t) returns (C2S_HandleByTokenRpn_t){}
+
+}
+
+message C2S_CreateMetadataReq_t {
+  string metaId = 1; // 元数据id, 当元数据id已存在时, 会执行升级版本操作
+  string appId = 7; // 文件归属的appId
+  string openId = 13; // 文件归属的用户的openId
+  int32 scopeId = 19; // 文件所使用的scopeId
+  string key = 25; // 文件归属在存储系统中的key
+  string name = 31; // 文件名称
+  string type = 37; // 数据类型
+  string remark = 43; // 备注
+  string userData = 49; // 对应的接入系统的数据
+  int64 spaceSize = 55; // 文件大小
+  string instanceId = 61; // 文件归属的应用实例id
+  string companyId = 67; // 文件归属的企业id
+  string userId = 73; // 文件归属的用户的Id
+  string employeeId = 79; // 文件归属的用户的employeeId
+  string unionId = 85; // 文件归属的用户的unionId
+  int32 capacityType = 91; // 计入容量的类型, 0或空: 不计入容量, 1: 计入容量, 2: 被覆盖
+}
+
+message C2S_CreateMetadataRpn_t {
+  string metaId = 10;
+  optional int32 version = 20;
+}
+
+message C2S_GetUploadFileUrlReq_t{
+
+  int32 scopeId = 10; // 资源id
+  int64 expires = 20;  // 超时时间
+  repeated RequestUploadUrlFileInfo requestUploadUrlFileInfo = 30; // 文件列表
+  optional InvokeUser invokeUserInfo = 40; // 调用者信息
+  optional bool useInnerEndpoint = 50; // 是否使用内网地址
+}
+message C2S_GetUploadFileUrlRpn_t{
+
+  google.protobuf.Struct response = 5; //返回值示例: {"上传时设置的文件的key" : "上传文件的url"}
+}
+
+message RequestUploadUrlFileInfo {
+  string key = 10; // 文件key
+  int64 size = 20; // 文件大小
+  optional string contentType = 30; // 文件类型
+  bool checkCapacity = 40; // 是否检查容量
+}
+
+message C2S_DeleteMetadataReq_t {
+
+  repeated C2S_CreateMetadataRpn_t metas = 10; // 元数据列表
+  int32 scopeId = 20; // 文件所使用的scopeId
+  InvokeUser invokeUserInfo = 30; // 调用者信息
+}
+
+message C2S_DeleteMetadataRpn_t {
+}
+
+// 调用者信息
+message InvokeUser {
+  string uid = 10; //
+  string appId = 20; //
+  int32 platform = 30; //
+  string accountSource = 40; //
+  string accountName = 50; //
+  string organizationId = 60; //
+  string employeeId = 70; //
+  string unionId = 80; //
+  string openId = 90; //
+  string instanceId = 95; //
+}
+
+message C2S_DeleteObjectsReq_t {
+  int32 scopeId = 10; // 所使用的scopeId, 注意, objectIdentity中的scopeId在这个方法中不起作用
+  repeated ObjectIdentity objectIdentity = 20; // 对象标识
+}
+
+message C2S_DeleteObjectsRpn_t {
+
+  repeated DeleteObjectsResult deleteObjectsResult = 10;
+}
+
+message DeleteObjectsResult {
+  string objectKey = 10; // 操作的对象的key
+  string version = 20; // 对象的版本
+  bool deleteMarker = 30; // 标识对象是否标记删除, 多版本状态下不会真正删除文件, 而是标记文件为删除状态
+  optional string deleteMarkerVersion = 40; //
+}
+
+message ObjectIdentity {
+  string key = 10; // 对象存储的路径
+  optional string version = 20; // 对象版本, 当桶的多版本状态是开启时，不指定版本删除对象将产生一个带唯一版本号的删除标记，并不删除对象；当桶的多版本状态是Suspended时，不指定版本删除将删除版本号为null的对象，并将产生一个版本号为null的删除标记, 如果要删除指定版本的对象，请求可携带versionId消息参数。
+  optional int32 scopeId = 30; // 所使用的scopeId
+}
+
+message C2S_PreHandleReq_t {
+
+  repeated ObjectIdentity objectIdentity = 10; // 对象标识
+  optional int32 expireTimeInSecond = 20; // token过期时间, 单位: 秒, 默认值: 60
+  int32 allowHandleType = 30; // 允许的操作类型,由高位到低位分别表示: 允许复制;允许删除
+}
+
+message C2S_PreHandleRpn_t {
+
+  string token = 10; // token
+}
+
+message C2S_HandleByTokenReq_t {
+
+  string token = 10; // token
+  optional int32 scopeId = 20; // 目标的scope, 拷贝等操作时必须传入
+  optional string keyPrefix = 30; // 目标路径的key前缀, 如: 文件拷贝到的目标路径采用keyPrefix + 原文件路径, 前后无斜杠
+  int32 handleType = 40; // 操作类型,由高位到低位分别表示: 允许复制;允许删除
+}
+
+message C2S_HandleByTokenRpn_t {
+
+  repeated ObjectIdentity objectIdentity = 10; // 操作的文件列表
+}

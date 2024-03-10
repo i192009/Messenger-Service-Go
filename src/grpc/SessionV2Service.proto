@@ -1,0 +1,373 @@
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.jumeaux.sessionV2.lib";
+option java_outer_classname = "SessionServiceV2Proto";
+option go_package = "./;services";
+
+service SessionV2SessionService{
+  rpc CreateSession (C2S_CreateSessionReq_t) returns (C2S_CreateSessionRpn_t);
+  rpc DeleteSession (C2S_DeleteSessionReq_t) returns (C2S_DeleteSessionRpn_t);
+  rpc QuerySession (C2S_QuerySessionReq_t) returns (C2S_QuerySessionRpn_t);
+  rpc GetSession (C2S_GetSessionReq_t) returns (C2S_GetSessionRpn_t);
+}
+
+service SessionV2TemplateService{
+  rpc CreateTemplate (C2S_CreateTemplateReq_t) returns (C2S_CreateTemplateRpn_t);
+  rpc UpdateTemplate (C2S_UpdateTemplateReq_t) returns (C2S_UpdateTemplateRpn_t);
+  rpc DeleteTemplate (C2S_DeleteTemplateReq_t) returns (C2S_DeleteTemplateRpn_t);
+  rpc QueryTemplate (C2S_QueryTemplateReq_t) returns (C2S_QueryTemplateRpn_t);
+  rpc GetTemplate (C2S_GetTemplateReq_t) returns (C2S_GetTemplateRpn_t);
+}
+
+service SessionV2ClientService{
+  rpc AddUserToSession (C2S_AddUserToSessionReq_t) returns (C2S_AddUserToSessionRpn_t);
+  rpc RemoveUserFromSession (C2S_RemoveUserFromSessionReq_t) returns (C2S_RemoveUserFromSessionRpn_t);
+  rpc EditRole (C2S_EditRoleReq_t) returns (C2S_EditRoleRpn_t);
+  rpc RejectJoin (C2S_RejectJoinReq_t) returns (C2S_RejectJoinRpn_t);
+  rpc InviteUser (C2S_InviteUserReq_t) returns (C2S_InviteUserRpn_t);
+  rpc GetClient (C2S_GetClientReq_t) returns (C2S_GetClientRpn_t);
+  rpc QueryClient (C2S_QueryClientReq_t) returns (C2S_QueryClientRpn_t);
+}
+
+enum SessionV2SessionType{
+  TEMPORARY = 0;
+  PERMANENT = 1;
+}
+
+enum SessionV2MessageAction{
+  SEND = 0;
+}
+
+enum SessionV2DestructionStrategy{
+  IMMEDIATE_DESTRUCTION = 0;
+  DELAYED_DESTRUCTION = 1;
+  MANUAL_DESTRUCTION = 2;
+}
+
+enum SessionV2OwnerLeaveStrategy{
+  IMMEDIATE_DESTRUCTION_OWNER = 0;
+  RANDOM_ASSIGN = 1;
+  MANUAL_ASSIGN = 2;
+}
+
+message SessionV2MessagePolicy {
+  bool noRestrictions = 10;
+  uint32 timeout = 20;
+  uint32 messagesPerTimeout = 30;
+}
+
+message SessionV2SessionPolicy{
+  SessionV2SessionType type = 10;
+  string visibility = 20;
+  string persistence = 30;
+  repeated string roleList = 40;
+  uint32 userLimit = 50;
+  uint32 connectionLimit = 60;
+  uint32 timeout = 70;
+  bool allowNotifications= 80;
+  SessionV2MessagePolicy messagePolicy = 90;
+  SessionV2DestructionStrategy  destructionStrategy = 100;
+  SessionV2OwnerLeaveStrategy ownerLeaveStrategy = 110;
+
+}
+
+message SessionV2ClientPolicy {
+  uint32 connections = 10;
+  uint32 timeout = 20;
+  uint32 messagesPerTimeout = 30;
+  string role = 40;
+}
+
+message C2S_CreateSessionReq_t{
+  string parentSessionId = 10;
+  uint32 appId = 20;
+  uint64 templateId = 30;
+  string name = 40;
+  string password = 50;
+  google.protobuf.Struct properties = 60;
+  bool isMain = 70;
+}
+
+message C2S_CreateSessionRpn_t{
+  uint64 parentSessionId = 10;
+  bool success = 20;
+  string message = 30;
+}
+
+message C2S_DeleteSessionReq_t{
+  uint32 appId = 10;
+  uint64 sessionId = 20;
+}
+
+message C2S_DeleteSessionRpn_t{
+  uint64 sessionId = 10;
+  bool success = 20;
+  string message = 30;
+}
+
+message C2S_QuerySessionReq_t{
+  uint32 appId = 10;
+  uint64 parentSessionId=20;
+  string type = 30;
+  string visibility = 40;
+  string persistence = 50;
+  SessionV2DestructionStrategy destructionStrategy = 60;
+  SessionV2OwnerLeaveStrategy ownerLeaveStrategy = 70;
+  uint32 page = 80;
+  uint32 limit = 90;
+  string sort = 100;
+  string order = 110;
+  uint32 skip = 120;
+}
+
+message C2S_QuerySessionRpn_t{
+  uint32 page = 10;
+  uint32 limit = 20;
+  uint32 total = 30;
+  repeated C2S_QuerySessionObjectRpn_t results = 40;
+  bool success = 50;
+  string message = 60;
+}
+
+message C2S_QuerySessionObjectRpn_t{
+  uint64 sessionId = 10;
+  string name = 20;
+  uint32 appId = 30;
+  uint64 templateId = 40;
+  SessionV2SessionPolicy sessionPolicy = 50;
+  google.protobuf.Struct properties = 60;
+  google.protobuf.Timestamp createdAt = 70;
+  google.protobuf.Timestamp updatedAt = 80;
+}
+
+message C2S_GetSessionReq_t{
+  uint32 appId=10;
+  uint64 sessionId = 20;
+}
+
+message C2S_GetSessionRpn_t{
+  uint64 parentSessionId = 10;
+  string name = 20;
+  uint32 appId = 30;
+  uint64 templateId = 40;
+  SessionV2SessionPolicy sessionPolicy = 50;
+  map<string, SessionV2ClientPolicy> clients =60 ;
+  google.protobuf.Struct properties = 70;
+  google.protobuf.Timestamp createdAt = 80;
+  google.protobuf.Timestamp updatedAt = 90;
+}
+
+message C2S_CreateTemplateReq_t{
+  string name = 10;
+  string type = 15;
+  uint32 appId = 20;
+  string visibility = 25;
+  string persistence = 30;
+  repeated string roleList = 35;
+  uint32 userLimit = 40;
+  uint32 connectionLimit = 45;
+  uint32 timeout = 50;
+  SessionV2MessagePolicy messagePolicy = 55;
+  bool allowNotification = 60;
+  SessionV2DestructionStrategy  destructionStrategy = 65;
+  SessionV2OwnerLeaveStrategy ownerLeaveStrategy = 70;
+  google.protobuf.Struct properties = 75;
+}
+
+
+message C2S_CreateTemplateRpn_t{
+  uint64 templateId = 10;
+  bool success = 20;
+  string message = 30;
+}
+
+message C2S_UpdateTemplateReq_t{
+  uint64 templateId = 10;
+  string name = 15;
+  string type= 20;
+  uint32 appId=25;
+  string visibility = 30;
+  string persistence = 35;
+  repeated string roleList = 40;
+  uint32 userLimit = 45;
+  uint32 connectionLimit = 50;
+  uint32 timeout = 55;
+  bool allowNotifications=60;
+  SessionV2MessagePolicy messagePolicy = 65;
+  SessionV2DestructionStrategy  destructionStrategy = 70;
+  SessionV2OwnerLeaveStrategy ownerLeaveStrategy = 75;
+  google.protobuf.Struct properties = 80;
+}
+
+message C2S_UpdateTemplateRpn_t{
+  uint64 templateId = 10;
+  bool success = 20;
+  string message = 30;
+}
+
+message C2S_DeleteTemplateReq_t{
+  uint32 appId = 10;
+  uint64 templateId = 20;
+}
+
+message C2S_DeleteTemplateRpn_t{
+  uint64 templateId = 10;
+  bool success = 20;
+  string message = 30;
+}
+
+message C2S_QueryTemplateReq_t{
+  string type = 10;
+  string visibility = 15;
+  string persistence = 20;
+  SessionV2DestructionStrategy destructionStrategy = 25;
+  SessionV2OwnerLeaveStrategy ownerLeaveStrategy = 30;
+  uint32 page = 35;
+  uint32 skip = 40;
+  uint32 limit = 45;
+  string sort = 50;
+  string order = 55;
+}
+
+message C2S_QueryTemplateRpn_t{
+  uint32 page = 10;
+  uint32 limit = 20;
+  uint32 total = 30;
+  repeated C2S_QueryTemplateObjectRpn_t results = 40;
+  bool success = 50;
+  string message = 60;
+}
+
+message C2S_QueryTemplateObjectRpn_t{
+  uint64 templateId = 10;
+  string name = 15;
+  string type = 20;
+  string visibility = 25;
+  string persistence = 30;
+  repeated string roleList = 35;
+  uint32 userLimit = 40;
+  uint32 connectionLimit = 45;
+  uint32 timeout = 50;
+  bool allowNotification = 55;
+  SessionV2MessagePolicy messagePolicy = 60;
+  SessionV2DestructionStrategy  destructionStrategy = 65;
+  SessionV2OwnerLeaveStrategy ownerLeaveStrategy = 70;
+  google.protobuf.Struct properties = 75;
+  google.protobuf.Timestamp createdAt = 80;
+  google.protobuf.Timestamp updatedAt = 85;
+}
+
+message C2S_GetTemplateReq_t{
+  uint32 appId = 10;
+  uint64 templateId = 20;
+}
+
+message C2S_GetTemplateRpn_t{
+  uint64 templateId = 10;
+  string name = 15;
+  string type = 20;
+  string visibility = 25;
+  string persistence = 30;
+  repeated string roleList = 35;
+  uint32 userLimit = 40;
+  uint32 connectionLimit = 45;
+  uint32 timeout = 50;
+  SessionV2MessagePolicy messagePolicy = 55;
+  SessionV2DestructionStrategy  destructionStrategy = 60;
+  SessionV2OwnerLeaveStrategy ownerLeaveStrategy = 65;
+  google.protobuf.Struct  properties = 70;
+  google.protobuf.Timestamp createdAt = 75;
+  google.protobuf.Timestamp updatedAt = 80;
+}
+
+message C2S_EditRoleReq_t{
+  uint32 appId = 10;
+  string openId = 20;
+  string role = 30;
+}
+
+message C2S_EditRoleRpn_t{
+  bool success = 10;
+  string message = 20;
+}
+
+message C2S_RejectJoinReq_t{
+  uint32 appId = 10;
+  string openId = 20;
+}
+
+message C2S_RejectJoinRpn_t{
+  bool success = 10;
+  string message = 20;
+}
+
+message C2S_InviteUserReq_t{
+  uint32 appId = 10;
+  string openId = 20;
+}
+
+message C2S_InviteUserRpn_t{
+  bool success = 10;
+  string message = 20;
+}
+
+message C2S_AddUserToSessionReq_t{
+  uint32 appId = 10;
+  string openId = 20;
+  string sessionId = 30;
+}
+
+message C2S_AddUserToSessionRpn_t{
+  bool success = 10;
+  string message = 20;
+}
+
+
+message C2S_RemoveUserFromSessionReq_t{
+  uint32 appId = 10;
+  string openId = 20;
+  string sessionId = 30;
+}
+
+
+message C2S_RemoveUserFromSessionRpn_t{
+  bool success = 10;
+  string message = 20;
+}
+
+
+message C2S_GetClientReq_t{
+  uint32 appId = 10;
+  string openId = 20;
+}
+
+message C2S_GetClientRpn_t{
+  string openId = 10;
+  string appId = 20;
+  repeated uint64 sessions = 30;
+  string status = 40;
+  google.protobuf.Timestamp createdAt = 50;
+  google.protobuf.Timestamp updatedAt = 60;
+}
+
+
+message C2S_QueryClientReq_t{
+  uint32 appId = 10;
+  string status = 20;
+  uint32 page = 30;
+  uint32 limit = 40;
+  string sort = 50;
+  string order = 60;
+  uint32 skip = 70;
+}
+
+message C2S_QueryClientRpn_t{
+  uint32 page = 10;
+  uint32 limit = 20;
+  uint32 total = 30;
+  repeated string results = 40;
+}

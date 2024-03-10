@@ -1,0 +1,252 @@
+syntax = "proto3";
+
+package proto;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "./;services";
+
+service SessionSessionService {
+  rpc CreateSession (CreateSessionRequest) returns (CreateSessionResponse);
+  rpc DeleteSession (DeleteSessionRequest) returns (DeleteSessionResponse);
+  // get available session from give sessions， return available session and session info
+  rpc GetAvailableSession (GetAvailableSessionRequest) returns (GetAvailableSessionResponse);
+  // get session info from give sessions
+  rpc GetSessionInfo (GetSessionInfoRequest) returns (GetSessionInfoResponse);
+}
+
+service SessionTemplateService {
+
+}
+
+service SessionClientService {
+  rpc RegisterToSession (RegisterToSessionRequest) returns (RegisterToSessionResponse);
+  rpc JoinSession (JoinSessionRequest) returns (JoinSessionResponse);
+  rpc LeaveSession (LeaveSessionRequest) returns (LeaveSessionResponse);
+  rpc SendMessage (SendSessionMessageRequest) returns (SendSessionMessageResponse);
+}
+
+service SessionAdminService {
+  rpc InviteUser (InviteUserRequest) returns (InviteUserResponse);
+  rpc KickUser (KickUserRequest) returns (KickUserResponse);
+}
+
+message WebSocketMessage {
+  // Only  send message and sessionId attribute when sending message to session service
+  string action = 1;
+  string message = 2;
+  string sessionId = 3;
+  string name = 4;
+  string photo = 5;
+  string openId = 6;
+  string timestamp = 7;
+  repeated string  targets = 8;
+  string location = 9;
+}
+
+message Notification {
+  string action = 1;
+  string id = 2;
+  string linkageId = 3;
+  string appId = 4;
+  string openId = 5;
+  string classId = 6;
+  string subclassId = 7;
+  string messageTemplateId = 8;
+  string content = 9;
+  string source = 10;
+  string status = 11;
+  repeated string target= 12;
+  google.protobuf.Struct statusSync = 13;
+  string createdAt = 14;
+  string updatedAt = 15;
+  repeated NotificationAction actions = 16;
+}
+
+message NotificationPolicy {
+  string kafka = 1;
+  string http = 2;
+}
+
+message NotificationAction {
+  string name = 1;
+  string tips = 2;
+  NotificationActionTrigger action = 3;
+  string nextAction = 4;
+}
+
+message NotificationActionTrigger {
+  string type = 1;
+  string url = 2;
+  string method = 3;
+  google.protobuf.Struct query = 4;
+  google.protobuf.Struct body = 5;
+}
+
+message CreateSessionRequest {
+  string sessionId = 1;
+  optional string templateId = 2;
+  string appId = 3;
+  string name = 4;
+  string ownerId = 5;
+  string ownerName = 6;
+  string ownerPhoto = 7;
+  string type = 8; // temporary, permanent
+  string visibility = 9; // public, private, or protected
+  string persistence = 10; // long-term, or short-term
+  ConnectionPolicy connectionPolicy = 11;
+  map<string, Role> roles = 12; // owner, user must be present
+  string destructionStrategy = 13; // immediate-destruction, delayed-destruction, manual-destruction
+  string ownerLeaveStrategy = 14; // immediate-destruction, random-assign, manual-assign
+  bool createTencentChatGroup = 15;
+  optional string password = 16;
+  optional uint64 timeout = 17; // used for temporary sessions
+  optional uint64 maxUsers = 18;
+  optional google.protobuf.Struct sessionCustomPropertySettings = 19;
+  optional google.protobuf.Struct roleCustomPropertySettings = 20;
+  optional string mainId = 21;
+  uint64 maxActiveUsers = 22;
+}
+
+message CreateSessionResponse {
+  string id = 1;
+  string message = 2;
+}
+
+message DeleteSessionRequest {
+  string sessionId = 1;
+  string openId = 2;
+}
+
+message DeleteSessionResponse {
+  string id = 1;
+  string message = 2;
+}
+
+message GetAvailableSessionRequest {
+  repeated string sessionIds = 1;
+}
+
+message SessionInfo {
+  string sessionId = 1;
+  string name = 2;
+  string ownerId = 3;
+  string ownerName = 4;
+  uint32 numUsers = 5;
+  uint32 maxUsers = 6;
+  repeated string clients = 7;
+}
+
+message AvailableSession {
+	string SessionId = 1;
+	string SessionToken = 2;
+}
+
+message GetSessionInfoRequest {
+  repeated string sessionIds = 10;
+}
+
+message GetSessionInfoResponse {
+  repeated SessionInfo sessions = 10;
+}
+
+message GetAvailableSessionResponse {
+  optional AvailableSession availableSession = 1;
+  repeated SessionInfo availableSessions = 2;
+  repeated SessionInfo fullSessions = 3;
+  repeated string deletedSessions = 4;
+}
+
+message ConnectionPolicy {
+  uint64 maxConnectionPerUser = 1;
+  uint64 messageTimeout = 2;
+  uint64 messagesPerTimeout = 3;
+  bool infiniteMessages = 4;
+  bool autoLeave = 5;
+}
+
+message Role {
+  bool editRole = 1;
+  bool kickUser = 2;
+  bool chatPermission = 3;
+  bool deleteSession = 4;
+  bool allowInvite = 5;
+}
+
+message RegisterToSessionRequest {
+  string name = 1;
+  string photo = 2;
+  string openId = 3;
+  string sessionId = 4;
+  optional string ticket= 5;
+  optional string password = 6;
+}
+
+message RegisterToSessionResponse {
+  string message = 1;
+}
+
+message JoinSessionRequest {
+  string openId = 1;
+  string sessionId = 2;
+}
+
+message JoinSessionResponse {
+  string message = 1;
+}
+
+message LeaveSessionRequest {
+  string openId = 1;
+  string sessionId = 2;
+}
+
+message LeaveSessionResponse {
+  string message = 1;
+}
+
+message SessionSendMessageRequest {
+  string openId = 1;
+  string sessionId = 2;
+  string message = 3;
+}
+
+message SessionSendMessageResponse {
+  string message = 1;
+}
+
+message SendSessionMessageRequest {
+  string openId = 1;
+  string sessionId = 2;
+  string message = 3;
+}
+
+message SendSessionMessageResponse {
+  string message = 1;
+}
+
+message InviteUserRequest {
+  string openId = 1;
+  string sessionId = 2;
+  string clientId = 3;
+}
+
+message InviteUserResponse {
+  string action = 1;
+  string ticketId = 2;
+  string sessionId = 3;
+  string openId = 4;
+  string timeout = 5;
+  bool activated = 6;
+  string createdAt = 7;
+  string updatedAt = 8;
+}
+
+message KickUserRequest {
+  string openId = 1;
+  string sessionId = 2;
+  string clientId = 3;
+}
+
+message KickUserResponse {
+  string message = 1;
+}

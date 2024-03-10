@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.zmatrix.lib";
+option java_outer_classname = "ZmatrixService";
+package cn.zixel.zmatrix.pb;
+// 测试服务
+service TestService {
+    // 测试服务
+    //TestRequest ,TestReply
+    rpc Test(TestRequest) returns (TestReply) {}
+    //TestRequest ,TestReply
+    rpc Test1(TestRequest) returns (TestReply) {}
+}
+
+// 测试请求
+message TestRequest {
+    // 隶属app
+    string appId = 1;
+    // 资源路径
+    string path = 2;
+    // 角色名称
+    string roleName = 3;
+    // 用户uid集合
+    repeated string users = 4;
+}
+
+message TestReply {
+    int32 count = 1;
+}

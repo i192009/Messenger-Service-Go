@@ -1,0 +1,9 @@
+[L]2023-09-28 10:16:44.786|84_39169774215247873| INF |DESKTOP-4PAEICH|pool-1-thread-1|app.go|45|0|System|Nil|"framework initialize ..."| 
+[L]2023-09-28 10:16:44.790|85_39169774231500801| INF |DESKTOP-4PAEICH|pool-1-thread-1|database.go|33|0|System|Nil|"initialize database ..."| 
+[L]2023-09-28 10:16:44.794|86_39169774231566337| DBG |DESKTOP-4PAEICH|pool-1-thread-1|mongo.go|101|GetCollection|System|Nil|"conn.cli is nil"| 
+[L]2023-09-28 10:16:44.795|87_39169774231631873| DBG |DESKTOP-4PAEICH|pool-1-thread-1|mongo.go|101|GetCollection|System|Nil|"conn.cli is nil"| 
+[L]2023-09-28 10:16:44.795|88_39169774231697409| DBG |DESKTOP-4PAEICH|pool-1-thread-1|mongo.go|101|GetCollection|System|Nil|"conn.cli is nil"| 
+[L]2023-09-28 10:16:44.798|89_39169774231762945| DBG |DESKTOP-4PAEICH|pool-1-thread-1|mongo.go|101|GetCollection|System|Nil|"conn.cli is nil"| 
+[L]2023-09-28 10:16:44.800|90_39169774248278017| DBG |DESKTOP-4PAEICH|pool-1-thread-1|mongo.go|101|GetCollection|System|Nil|"conn.cli is nil"| 
+[L]2023-09-28 10:16:44.800|91_39169774248343553| ERR |DESKTOP-4PAEICH|pool-1-thread-1|manager.go|46|NewK8sClientManager|System|Nil|"Error building kube config: CreateFile C:\Users\92346/.kube/config: The system cannot find the path specified."| 
+[L]2023-09-28 10:16:44.800|92_39169774248409089| INF |DESKTOP-4PAEICH|pool-1-thread-1|server.go|35|InitializeServer|System|Nil|"Initializing Messenger server"| 

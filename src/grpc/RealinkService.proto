@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package structure;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.realink.lib";
+option java_outer_classname = "RealinkProto";
+
+service RealinkService {
+  // 添加用户权益
+  rpc addUserEquity(C2S_AddUserEquityReq) returns(C2S_AddUserEquityRpn);
+  // 获取用户权益
+  rpc getUserEquity(C2S_GetUserEquityReq) returns(C2S_GetUserEquityRpn);
+  // 冻结用户权益
+  rpc freezeUserEquity(C2S_FreezeUserEquityReq) returns(C2S_FreezeUserEquityRpn);
+  // 解冻用户权益
+  rpc unfreezeUserEquity(C2S_UnfreezeUserEquityReq) returns(C2S_UnfreezeUserEquityRpn);
+  // 获取用户权益使用次数
+  rpc getUserEquityChange(S2C_GetUserEquityChangeReq) returns(S2C_GetUserEquityChangeRpn);
+
+}
+
+message C2S_AddUserEquityReq {
+  string tenantId = 10; // 租户ID
+  int32 maxTranfromNum = 20; // 最大转化数量
+  int32 equityType = 30; // 权益类型 1,按流量  2，按周期
+  optional string startTime =40;
+  optional string endTime = 50;
+}
+
+message C2S_AddUserEquityRpn {
+  int32 code = 10;
+  string msg = 20;
+}
+
+message UserEquity {
+  string tenantId = 10; // 租户ID
+  int32 maxTranfromNum = 20; // 最大转化数量
+  int32 currentTranfromNum = 30; // 当前转化数量
+}
+
+message C2S_GetUserEquityReq {
+  repeated string tenantId = 10; // 租户ID
+}
+message C2S_GetUserEquityRpn {
+  int32 code = 10;
+  string msg = 20;
+  repeated UserEquity userEquityList = 30;
+}
+
+message C2S_FreezeUserEquityReq {
+  string tenantId = 10; // 租户ID
+}
+message C2S_FreezeUserEquityRpn {
+  int32 code = 10;
+  string msg = 20;
+}
+message C2S_UnfreezeUserEquityReq {
+  string tenantId = 10; // 租户ID
+}
+message C2S_UnfreezeUserEquityRpn {
+  int32 code = 10;
+  string msg = 20;
+}
+
+message S2C_GetUserEquityChangeReq {
+  optional string tenantId = 10; // 租户ID 不传查所有
+  optional int32 type = 20; // 类型  1,日 默认1；
+}
+message S2C_GetUserEquityChangeRpn {
+  int32 code = 10;
+  string msg = 20;
+  repeated UserEquityChange userEquityChangeList = 30;
+}
+message UserEquityChange {
+  string tenantId = 10; // 租户ID
+  int32 type = 20; // 类型  1,日 默认1；
+  int32 changeNum = 30; // 变更数量
+}

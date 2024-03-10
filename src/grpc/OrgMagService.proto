@@ -1,0 +1,319 @@
+syntax = "proto3";
+
+package structure;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "cn.zixel.organization.management.lib";
+option java_outer_classname = "OrgMagProto";
+option go_package = "./;services";
+
+// 服务定义
+service OrgMagService {
+  // 创建公司
+  rpc CreateCompany(CompanyCreateRequest) returns (CompanyCreateReply) {}
+  // 删除公司
+  rpc DeleteCompany(CompanyDeleteRequest) returns (CompanyDeleteReply) {}
+  // 更新公司
+  rpc UpdateCompany(CompanyUpdateRequest) returns (CompanyUpdateReply) {}
+  // 查询公司
+  rpc QueryCompany(C2S_QueryCompanyReq_t) returns (C2S_QueryCompanyRpn_t) {}
+  //查询用户公司列表
+  rpc GetCompanyListById(GetCompanyListByIdRequest) returns (GetCompanyListByIdReply) {}
+  rpc GetCompanyListByUid(C2S_GetCompanyListByUidReq_t) returns (GetCompanyListByIdReply) {}
+
+  //根据openId查询用户信息
+  rpc listUserByOpenId(C2S_ListUserByOpenIdReq) returns (C2S_ListUserByOpenIdRpn) {}
+
+  //根据openId查询用户信息
+  rpc listUserByUid(C2S_ListUserByUIdReq) returns (C2S_ListUserByOpenIdRpn) {}
+
+  // 添加企业用户
+  rpc addCompanyUser(C2S_AddCompanyUserReq) returns(C2S_AddCompanyUserRpn) {}
+
+  // 添加企业外部联系人
+  rpc addCompanyOutsideUser(C2S_AddCompanyOutsideUserReq) returns(C2S_AddCompanyOutsideUserRpn) {}
+
+  rpc deleteUser(C2S_DeleteUserReq) returns(C2S_DeleteUserRpn) {}
+
+  rpc queryUsers(C2S_UserQueryReq) returns(C2S_UserQueryRpn) {}
+
+  // 根据企业id获得企业信息
+  rpc getCompanyById(C2S_GetCompanyByIdReq) returns(CompanyMsg) {}
+
+  //添加已经存在的用户到企业中
+  rpc addExistUser(C2S_AddExistUserReq) returns(C2S_AddExistUserRpn) {}
+}
+
+//请求参数
+message CompanyCreateRequest {
+  string openId = 1;     // 用户openId
+  string company = 2;     // 公司名称
+  bool onlyCreateCompany = 3; // 是否仅创建企业, 不添加管理员, 该值为false或不传入时, openId必传且有效
+}
+
+message CompanyCreateReply {
+  string companyId = 1;      // 节点id
+}
+
+message CompanyDeleteRequest {
+  string openId = 1;     // 用户openId
+  string companyId = 2;    // 节点id
+}
+
+message CompanyDeleteReply {
+  string companyId = 1;  // 删除的节点数量
+}
+
+message CompanyUpdateRequest {
+  string openId = 1;     // 用户openId
+  string companyId = 2;  //公司id
+  string company = 3;     // 公司名称
+}
+
+message CompanyUpdateReply {
+  string openId = 1;     // 用户openId
+
+}
+
+message GetCompanyListByIdRequest {
+  string appId = 1;      // 应用ID
+  string openId = 2;     // 用户openId
+}
+
+message C2S_GetCompanyListByUidReq_t {
+  string uid = 10; // uid
+  // 账号标识符，只能为账号phone
+  // 提前被邀请加入企业的用户，刚注册登录时，企业服务可能尚未来得及处理用户创建事件
+  // 此时除了通过uid查询外，还需要额外通过账号标识符来获取企业列表，以确保查询到用户所在的企业
+  string accountIdentifier = 20;
+}
+
+message CompanyMsg {
+  string nodeId = 1;      // 应用ID
+  string company = 3;     // 公司名称
+  string companyId = 4;  //公司id
+  string source = 5;     // 资源
+  int64 updateTime = 6; //更改时间
+  string updateBy = 7; //更改人
+}
+
+message GetCompanyListByIdReply {
+  repeated CompanyMsg companys = 1;
+}
+
+message C2S_ListUserByOpenIdReq {
+  string companyId = 1;      // 企业Id
+  repeated string openId = 2;     // 用户openId
+}
+
+message C2S_ListUserByOpenIdRpn  {
+
+  repeated UserInfo userInfo = 1;
+}
+
+message C2S_ListUserByUIdReq {
+  string companyId = 10;      // 企业Id
+  repeated string uid = 20;     // 用户openId
+  string appId = 30; // 调用的应用id
+}
+
+message UserInfo {
+  optional string openId = 1;      // openId
+  optional string name = 2;      // 姓名
+  optional string enName = 3;      // 英文名
+  optional string avatar = 4;      // 头像
+  optional string avatarBig = 5;      // 大头像
+  optional string avatarMiddle = 6;      // 中头像
+  optional string avatarThumb = 7;      // 头像缩略图
+  optional string email = 8;      // 邮箱
+  optional string phone = 9;      // 手机
+  optional string nodeId = 10;      // 节点ID
+  optional string isInside = 14;      // 是否是企业内部成员, 0:内部, 1:外部
+  optional string companyId = 15;      // 企业id
+  optional string company = 16;      // 企业名称
+  map<string, string> feishuOpenId = 17;  //飞书opendId
+  optional string zixelUserId = 18;
+  optional string feishuUnionId = 19;      // 飞书unionId
+
+  string role = 20; // 角色, 1:管理员/2:普通成员
+  bool linkedUser = 21; // 是否与用户系统进行了关联
+}
+
+message C2S_AddCompanyUserReq{
+  string name = 1; // 姓名
+  string emailOrMobile = 2; // 邮箱或手机号
+  string role = 3; // 角色, 1:管理员/2:普通成员
+  string companyId = 4; // 企业id
+}
+
+message C2S_AddCompanyUserRpn{
+
+}
+
+message C2S_AddCompanyOutsideUserReq{
+  string name = 1; // 姓名
+  string emailOrMobile = 2; // 邮箱或手机号
+  string role = 3; // 角色, 1:管理员/2:普通成员
+  string companyId = 4; // 企业id
+  string company = 5; // 企业名称
+}
+
+message C2S_AddCompanyOutsideUserRpn{
+
+}
+
+message C2S_DeleteUserReq{
+  string nodeId = 1; // 节点ID
+  string userOpenId = 2; // 用户的openId
+}
+
+message C2S_DeleteUserRpn{
+
+}
+
+message C2S_UserQueryReq{
+  string nodeId = 1; // 节点ID
+  string isInside = 2; // 是否是企业内部成员, 0:内部, 1:外部
+  string appId = 3;
+  string companyId = 4; // 企业id
+  string search = 5; // 搜索数据, 目前可按姓名进行搜索
+  int32 page = 6; // 页码
+  int32 size = 7; // 每页数量
+  repeated OrderItem orders = 8; // 排序方式
+  optional bool linkedUser = 9; // 是否和用户系统进行了关联
+  string userGroupCode = 10; //用户组code
+  optional int64 skip = 15;
+  optional string role = 20; // 角色, 1:管理员/2:普通成员
+}
+
+message C2S_UserQueryRpn{
+  int64 total = 1; // 总记录数
+  repeated UserInfo userInfo = 2;
+}
+
+message OrderItem{
+  string key = 1; // 排序字段
+  string order = 2; // 排序方向，asc升序，deac降序
+}
+
+message C2S_GetCompanyByIdReq{
+  string companyId = 1; // 企业id
+}
+
+message C2S_AddExistUserReq{
+  string name = 10; // 姓名
+  optional string emailOrMobile = 20; // 邮箱或手机号
+  string role = 30; // 角色, 1:管理员/2:普通成员
+  string companyId = 40; // 企业id
+  optional string company = 50; // 添加的是企业外部联系人时, 这个字段需要给入
+  string openId = 60;      // openId
+  optional string zixelUserId = 70; // userid, 不传入时, 会根据openid去获取
+  string isInside = 80; // 是否是企业内部成员, 0:内部, 1:外部
+
+}
+
+message C2S_AddExistUserRpn{
+
+}
+
+message C2S_QueryCompanyReq_t {
+
+  enum CompanySourceEnum {
+    NULL_CompanySourceEnum = 0;
+    FEI_SHU = 10;
+    WEB = 20;
+  }
+
+  enum CompanyStageEnum {
+    NULL_CompanyStageEnum = 0;
+    TRIAL = 10; // 试用
+    BUSINESS_OPPORTUNITY = 20; // 商机
+    PAY = 30; // 付费
+    OVERDUE = 40; // 过期
+
+  }
+
+  string name = 10; // 企业名称
+  string adminSearch = 20; // 管理员信息
+  CompanySourceEnum companySource = 30;
+  CompanyStageEnum companyStage = 40;
+  int32 page = 50; // 页码
+  int32 size = 60; // 每页数量
+  repeated OrderItem orders = 70; // 排序方式
+  string invokeAppId = 80;
+}
+
+message C2S_QueryCompanyRpn_t {
+  int64 total = 10;
+  repeated CompanyMsg companyList = 1;
+
+}
+
+message ErrorInfo {
+  int32 code = 10;
+  string message = 20;
+  message serviceInfo{
+    string name = 10;
+    string uuid = 20;
+  }
+}
+
+/*******************************************
+                企业服务管理接口V2
+ *******************************************/
+service OrgMagServiceV2 {
+  // 检查用户是否被匹配模式命中
+  rpc CheckPatternUser(C2S_PatternUserCheckReq_t) returns(S2C_PatternUserCheckRpn_t) {}
+}
+
+message C2S_PatternUserCheckReq_t {
+  // pattern信息
+  string type = 10;       // 描述符类型，目前仅支持 group_id
+  string identifier = 15; // 描述符,如 gp_123456
+  optional google.protobuf.Struct attributes = 20;  // 可选参数，补充描述，供检查时使用
+
+  // 待检查用户信息 1-uid, 2-eid
+  // 传入的用户id类型，不同pattern type支持的userType不同
+  //  - group_id 支持 1, 2
+  //  其它待扩充，企业服务中一般使用eid判断
+  optional int32 userType = 30; // 如不传入，将在 userId、employeeId 下均作查询
+  repeated string users = 35;   // userType对应的id集合
+}
+
+message S2C_PatternUserCheckRpn_t {
+  repeated bool containStatus = 10;  // 包含情况，与传入的users数组一一对应，true表示包含，false表示不包含
+}
+
+
+/*******************************************
+                用户组管理接口
+ *******************************************/
+service GroupService {
+  // 批量查询用户组详情
+  rpc BatchGetGroups(C2S_GroupsBatchGetReq_t) returns (S2C_GroupsBatchGetRpn_t) {}
+}
+
+message C2S_GroupsBatchGetReq_t {
+  repeated string ids = 10;       // 用户组id集合，重复的id将被移除
+}
+// 用户组信息返回
+// exist为false时，仅errorMessage、groupId字段返回
+message GroupGetRpn {
+  bool exist = 1;                     // 请求用户组信息是否存在
+  string errorMessage = 2;                 // 用户组不存在时的错误提示信息
+
+  string id = 10;    // 用户组id, 如 "gp_123456789"
+  string refId = 20;    // 如果从引用节点转换得来，引用节点id, 如gp_2345
+  string name = 30;    // 用户组名称, 如 "zcp项目组"
+  string desc = 40;    // 描述, 如 "zcp项目小组"
+  int64 createTime = 50;    // 创建时间, 时间戳，单位ms
+  int64 modifyTime = 60;    // 最后修改时间, 时间戳，单位ms
+}
+
+message S2C_GroupsBatchGetRpn_t {
+  // 用户组信息获取失败时，该用户组亦将返回，但exist为false
+  repeated GroupGetRpn groups = 10;
+}
